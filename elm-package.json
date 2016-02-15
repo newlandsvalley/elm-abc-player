@@ -1,0 +1,28 @@
+{
+    "version": "1.0.0",
+    "summary": "Play ABC directly in the browser",
+    "repository": "https://github.com/newlandsvalley/elm-abc-player.git",
+    "license": "BSD3",
+    "source-directories": [
+        "src",
+        "src/abc-parser",
+        "src/examples",
+        "src/examples/simpleplayer",
+        "src/examples/tutorial"
+    ],
+    "exposed-modules": [
+        "SoundFont"
+    ],
+    "native-modules": true,
+    "dependencies": {
+        "elm-lang/core": "3.0.0 <= v < 4.0.0",
+        "evancz/elm-effects": "2.0.1 <= v < 3.0.0",
+        "evancz/elm-http": "3.0.0 <= v < 4.0.0",
+        "evancz/elm-html": "4.0.2 <= v < 5.0.0",
+        "evancz/start-app": "2.0.2 <= v < 3.0.0",
+        "imeckler/ratio": "2.0.0 <= v < 3.0.0",
+        "circuithub/elm-maybe-extra": "1.6.0 <= v < 2.0.0",
+        "circuithub/elm-list-extra": "3.9.0 <= v < 4.0.0",
+        "Bogdanp/elm-combine": "2.0.0 <= v < 3.0.0"
+    },
+    "elm-version": "0.16.0 <= v < 0.17.0"}

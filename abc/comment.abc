@@ -1,0 +1,22 @@
+X:6
+T:Princes Hornpipe.  GS.112
+T:?
+A:Leeds
+F:http://richardrobinson.tunebook.org.uk/tune/10294
+H:1831
+L:1/8
+M:2/2
+N:Title written in large ornate letters on the last line of the page.
+N:Rather better handwriting than the title at the top of the page
+O:England
+Q:1/2=90
+R:.Hornpipe
+S:George Spencer m/s, Leeds,1831
+Z:vmp.Cherri Graebe
+%%TBL:{"version":"beta","type":"tune","id":"10294"}
+K:D major
+(fg) | afge dfed | cdec ABAG | FGef gfed | c2 AA A2 (fg) |
+afge dfed |cdec ABAG | FGef gedc | d2 dd d2 :|
+|: (cd) | eAAA eAfA | eAAA fdfa |gfed dcBA | B2 BB B2 (AG) |
+FAdB cdec | defd efge | fgaf bgec | d2 dd d2 :|
+
