@@ -5,6 +5,7 @@ module Notable ( Notable (..)
 
 import AbcPerformance exposing (..)
 import Maybe exposing (map, withDefault)
+import Debug exposing (..)
 
 type alias AccumulatedTime = Float
 
@@ -19,23 +20,34 @@ type alias Performance = List NoteEvent
 
 defaultGain = 1.0
 
-fromNote : SingleNote -> (AccumulatedTime, Performance) -> (AccumulatedTime, Performance)
-fromNote n acc =
+fromNote : SingleNote -> Bool -> (AccumulatedTime, Maybe NoteEvent, Performance) -> (AccumulatedTime, Maybe NoteEvent, Performance)
+fromNote n tied acc =
   let
-    (t, p) = acc
+    (t, mtie, p) = acc    
+    event = (t, Note n.pitch defaultGain)
+    nextTie = 
+      if tied then 
+        Just event
+      else
+        Nothing
   in
     if (n.pitch == 0) then
-      (t + n.time, p)
+      (t + n.time, Nothing, p)
     else
-      let
-         event = (t, Note n.pitch defaultGain)
-      in
-         (t + n.time, event :: p)
+      case mtie of
+        Nothing ->    
+           (t + n.time, nextTie, event :: p)
+        Just (_, Note pitch g) ->
+           if (n.pitch == pitch) then 
+              (t + n.time, nextTie, p)
+           else 
+              (t + n.time, nextTie, event :: p)
+      
 
-fromChord : List SingleNote -> (AccumulatedTime, Performance) -> (AccumulatedTime, Performance)
+fromChord : List SingleNote -> (AccumulatedTime, Maybe NoteEvent, Performance) -> (AccumulatedTime, Maybe NoteEvent, Performance)
 fromChord ns acc =
   let
-    (t, p) = acc
+    (t, mtie, p) = acc
   in
     let
       f n = (t, Note n.pitch defaultGain)
@@ -46,16 +58,17 @@ fromChord ns acc =
         |> Maybe.map (\n -> n.time)
         |> withDefault 0.0 
     in
-      (t + noteTime, (List.append notes p))      
+      -- we asssume we won't tie a chord
+      (t + noteTime, Nothing, (List.append notes p))      
 
-fromBar : ABar -> (AccumulatedTime, Performance) ->  (AccumulatedTime, Performance)
+fromBar : ABar -> (AccumulatedTime,  Maybe NoteEvent, Performance) ->  (AccumulatedTime,  Maybe NoteEvent, Performance)
 fromBar b acc =
   let   
-    (t, p) = acc
+    (t, mtie, p) = acc
     f ne acc =       
       case ne of
-        ANote n  ->
-          fromNote n acc
+        ANote n tied ->
+          fromNote (log "note" n) tied acc
         AChord c ->
           fromChord c acc
   in
@@ -63,7 +76,9 @@ fromBar b acc =
 
 fromMelodyLine : AccumulatedTime -> MelodyLine -> Performance
 fromMelodyLine t m = 
-  List.foldl fromBar (0.0, []) m
-    |> snd
+  let
+    (t, mtie, p) =  List.foldl fromBar (0.0, Nothing, []) m
+  in
+    p
 
 

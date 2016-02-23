@@ -44,10 +44,8 @@ type alias ParseError =
 -- top level parsers
 abc : Parser AbcTune
 abc = (,) <$> headers <*> body <* end
--- abc = (,) <$> headers <*> many1 body <* restOfInput
 
 -- BODY
-body : Parser (List BodyPart)
 body = (::) <$> score <*> many
         (choice 
           [ score
@@ -326,84 +324,111 @@ locrian = succeed Locrian <* whiteSpace <* regex "(L|l)(O|o)(C|c)([A-Za-z])*"
 -- Headers
 area : Parser Header
 area = Area <$> ((headerCode 'A') *> strToEol)
+               <?> "A header"
 
 book : Parser Header
 book = Book <$> ((headerCode 'B') *> strToEol)
+               <?> "B Header"
 
 composer : Parser Header
 composer = Composer <$> ((headerCode 'C') *> strToEol)
+               <?> "C header"
 
 discography : Parser Header
 discography = Discography <$> ((headerCode 'D') *> strToEol)
+               <?> "D header"
 
 fileUrl : Parser Header
 fileUrl = FileUrl <$> ((headerCode 'F') *> strToEol)
+               <?> "F header"
 
 group : Parser Header
 group = Group <$> ((headerCode 'G') *> strToEol)
+               <?> "G header"
 
 history : Parser Header
 history = History <$> ((headerCode 'H') *> strToEol)
+               <?> "H header"
 
 instruction : Parser Header
 instruction = Instruction <$> ((headerCode 'I') *> inlineInfo )
+               <?> "I header"
 
 key : Parser Header
 key = buildKey <$> (headerCode 'K') <*> keySignature <*> keyAccidentals <* strToEol
+               <?> "K header"
 
 unitNoteLength : Parser Header
 unitNoteLength = UnitNoteLength <$> ((headerCode 'L') *> noteDuration )
+               <?> "L header"
 
 meter : Parser Header
 meter = Meter <$> ((headerCode 'M') *> meterDefinition  )
+               <?> "M header"
 
 macro : Parser Header
 macro = Macro <$> ((headerCode 'm') *> inlineInfo)
+               <?> "m header"
 
 notes : Parser Header
 notes = Notes <$> ((headerCode 'N') *> inlineInfo)
+               <?> "N header"
 
 origin : Parser Header
 origin = Origin <$> ((headerCode 'O') *> strToEol)
+               <?> "O header"
 
 parts : Parser Header
 parts = Parts <$> ((headerCode 'P') *> inlineInfo)
+               <?> "P header"
 
 tempo : Parser Header
 tempo = Tempo <$> ((headerCode 'Q') *> tempoSignature)
+               <?> "Q header"
 
 rhythm : Parser Header
 rhythm = Rhythm <$> ((headerCode 'R') *> inlineInfo)
+               <?> "R header"
 
 remark : Parser Header
 remark = Remark <$> ((headerCode 'r') *> inlineInfo)
+               <?> "r header"
 
 source : Parser Header
 source = Source <$> ((headerCode 'S') *> strToEol)
+               <?> "S header"
 
 symbolLine : Parser Header
 symbolLine = SymbolLine <$> ((headerCode 's') *> inlineInfo)
+               <?> "s header"
 
 title : Parser Header
 title = Title <$> ((headerCode 'T') *> inlineInfo)
+               <?> "T header"
 
 userDefined : Parser Header
 userDefined = UserDefined <$> ((headerCode 'U') *> inlineInfo)
+               <?> "U header"
 
 voice : Parser Header
 voice = Voice <$> ((headerCode 'V') *> inlineInfo)
+               <?> "V header"
 
 wordsAfter : Parser Header
 wordsAfter  = WordsAfter  <$> ((headerCode 'W') *> inlineInfo)
+               <?> "W header"
 
 wordsAligned : Parser Header
 wordsAligned  = WordsAligned  <$> ((headerCode 'w') *> inlineInfo)
+               <?> "w header"
 
 referenceNumber : Parser Header
 referenceNumber = ReferenceNumber <$> ((headerCode 'X') *> int)
+               <?> "x header"
 
 transcription : Parser Header
 transcription = Transcription <$> ((headerCode 'Z') *> strToEol)
+               <?> "Z header"
 
 {- a header is an information field up to and including the end of line marker -}
 header : Parser Header
@@ -412,6 +437,7 @@ header = informationField <* eol
 {- unsupported header reserved for future use -}
 unsupportedHeader : Parser Header
 unsupportedHeader = succeed UnsupportedHeader <* unsupportedHeaderCode <* strToEol
+               <?> "unsupported header"
 
 {- ditto for headers that may appear in the tune body -}
 tuneBodyHeader : Parser BodyPart
@@ -481,7 +507,6 @@ tuneBodyInfo =
 {- relax the spec in the pasring of headers to allow body-only tunes -}
 headers : Parser TuneHeaders
 headers = many header <?> "headers"
--- headers = many1 header <?> "headers"
 
 {- comments.  These are introduced with '%' and can occur anywhere.
    The stylesheet directive '%%' is not recognized here and will
@@ -490,6 +515,7 @@ headers = many header <?> "headers"
 -}
 comment : Parser Header
 comment = Comment <$> (regex "%" *> strToEol)
+               <?> "comment"
 
 -- low level parsers
 -- possible whitespace
@@ -523,6 +549,7 @@ scoreSpace = choice [ space
 -}
 ignore : Parser Music
 ignore = succeed Ignore <* (regex "[#@;`\\*\\?]+")
+               <?> "ignored character"
 
 {- this is an area where the spec is uncertain.  See 6.1.1 Typesetting line-breaks
    The forward slash is used to indicate 'continuation of input lines' often because
@@ -562,7 +589,7 @@ quotedString =
 annotationString : Parser String
 annotationString = 
     string "\"" *> regex "[\\^\\>\\<-@](\\\\\"|[^\"\n])*" <* string "\"" 
-      <?> "quoted string"
+      <?> "annotation"
 
 {- parse a remaining string up to but not including the end of line -}
 strToEol : Parser String
@@ -581,9 +608,11 @@ note = Note <$> abcNote
 
 abcNote : Parser AbcNote
 abcNote = buildNote <$> maybeAccidental <*> pitch <*> moveOctave <*> maybe noteDur <*> maybeTie
+               <?> "ABC note"
 
 abcChord : Parser AbcChord
 abcChord = buildChord <$> maybeAccidental <*>  (between (char '[') (char ']') (many1 abcNote)) <*> maybe noteDur 
+               <?> "ABC chord"
 
 {- an upper or lower case note ([A-Ga-g]) -}
 pitch : Parser String
@@ -604,8 +633,7 @@ accidental =
       , string "_"
       , string "="
       ]
-     )
- 
+     ) 
 
 {- move an octave up (+ve - according to the number of apostrophes parsed)
              or down (-ve - according to the number of commas parsed)
@@ -658,6 +686,7 @@ integralAsRational =
 
 tuplet : Parser Music
 tuplet = Tuplet <$> (char '(' *> tupletSignature) <*> many1 abcNote
+               <?> "tuplet"
 
 {- possible tuplet signatures
    (3             --> {3,2,3}
@@ -858,6 +887,21 @@ toTupletInt s =
   s |> String.toInt
     |> Result.toMaybe
     |> withDefault 3   -- default can't happen because all strings are regex-parsed 2-9    
+
+{- look ahead to allow a sneak preview of the next tokens
+   in productions such as many choice [...] and thus support
+   better error positioning.
+   Many thanks to Bogdan Popa for showing me how to do this
+-}
+lookAhead : Parser a -> Parser a
+lookAhead p =
+  primitive <| \cx ->
+    case app p cx of
+     (Ok res, _) ->
+        (Ok res, cx)
+     (Err m, cx') ->
+        log "lookahead error" (Err m, cx')
+
 
                 
 {- just for debug purposes - consume the rest of the input -}

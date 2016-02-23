@@ -57,6 +57,7 @@ update action model =
           case ss.name of
             "end" ->
                ({ model | loaded = True }, loadAbc "abc/lillasystern.abc" )
+               -- ({ model | loaded = True }, loadAbc "abc/tie.abc" )
                -- ({ model | loaded = True }, loadAbc "abc/justnotes.abc" )
             _ -> 
               let pitch = toInt ss.name

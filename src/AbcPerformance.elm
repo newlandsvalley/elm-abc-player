@@ -32,7 +32,7 @@ type alias SingleNote =
   }
 
 type NoteEvent =
-     ANote SingleNote
+     ANote SingleNote Bool    -- Bool indicates whether note is tied
    | AChord (List SingleNote)
    
 type alias ABar =
@@ -149,7 +149,7 @@ translateNoteSequence isSeq state notes =
   in
     if isSeq then 
        List.map f notes
-         |> List.map (\a -> ANote a)
+         |> List.map (\a -> ANote a False)
     else 
        [AChord (List.map f notes)]
 
@@ -159,8 +159,8 @@ translateNotePair n1 s1 n2 s2  =
   let      
     duration1 = (noteDuration s1.tempo n1.duration) * s1.tempoModifier
     duration2 = (noteDuration s2.tempo n2.duration) * s2.tempoModifier
-    note1 = ANote { time = duration1, pitch = toMidiPitch n1 s1.keySignature, pc = Just n1.pitchClass} 
-    note2 = ANote { time = duration2, pitch = toMidiPitch n2 s2.keySignature, pc = Just n2.pitchClass} 
+    note1 = ANote { time = duration1, pitch = toMidiPitch n1 s1.keySignature, pc = Just n1.pitchClass} False
+    note2 = ANote { time = duration2, pitch = toMidiPitch n2 s2.keySignature, pc = Just n2.pitchClass} False
   in
     [note1, note2]
 
@@ -176,14 +176,14 @@ translateMusic m acc =
       Note abc -> 
         let 
           duration = (noteDuration state.tempo abc.duration) * state.tempoModifier
-          note = ANote { time = duration, pitch = toMidiPitch abc state.keySignature, pc = Just abc.pitchClass} 
+          note = ANote { time = duration, pitch = toMidiPitch abc state.keySignature, pc = Just abc.pitchClass} abc.tied
           newState = addNoteToState note state
         in
           (melodyLine, newState)
       Rest r -> 
         let 
           duration = (noteDuration state.tempo r) * state.tempoModifier
-          note = ANote { time = duration, pitch = 0, pc = Nothing }
+          note = ANote { time = duration, pitch = 0, pc = Nothing } False
           newState = addNoteToState note state
         in 
           (melodyLine, newState)
