@@ -238,6 +238,7 @@ toMelodyLine : MusicLine -> (MelodyLine, TranslationState) -> (MelodyLine, Trans
 toMelodyLine ml state =
   List.foldr translateMusic state ml
   
+
  
 {- translate an AbcTune to a more playable melody line
    which is a list of notes (or rests) and their durations
@@ -255,7 +256,7 @@ fromAbc tune =
     headerState = List.foldl updateState defaultState (fst tune)
     f bp acc = case bp of
       -- process a line from the melody using the current state
-      Score musicLine continuation -> 
+      Score musicLine -> 
         let 
           (existingLine, state) = acc
           (newLine, newState) = toMelodyLine musicLine acc

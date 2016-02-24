@@ -68,7 +68,7 @@ type alias TuneBody = List BodyPart
 
 {-| A Tune Body part -}
 type BodyPart
-  =  Score MusicLine Bool
+  =  Score MusicLine
   |  BodyInfo Header
 
 {-| a line of musical score up to eol -} 
@@ -114,6 +114,7 @@ type Music
   | NoteSequence (List Music)    -- Music restricted to note sequences
   | Spacer Int
   | Ignore
+  | Continuation
 
 {-| a Repeat in a Bar line -}
 type Repeat = 

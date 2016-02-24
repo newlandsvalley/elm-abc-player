@@ -235,6 +235,7 @@ music m = case m of
    NoteSequence ms -> musics ms
    Spacer i -> " "
    Ignore -> ""
+   Continuation -> "\\"
    -- _ -> ""
 
 header : Header -> String
@@ -277,7 +278,7 @@ tuneHeaders  hs =
     
 bodyPart : BodyPart -> String
 bodyPart bp = case bp of
-  Score ml isCont -> musics ml  ++ (continuation isCont)
+  Score ml -> musics ml  
   BodyInfo h ->  header h
 
 continuation : Bool -> String

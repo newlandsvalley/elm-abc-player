@@ -21,6 +21,7 @@ import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
 import Combine.Num exposing (..)
+import Combine.Extra exposing (manyTill')
 import Ratio exposing (Rational, over, fromInt)
 import String exposing (fromList, toList, foldl)
 import Char exposing (fromCode, toCode, isUpper)
@@ -40,24 +41,42 @@ type alias ParseError =
   ,  position : Int
   }
 
-
 -- top level parsers
 abc : Parser AbcTune
-abc = (,) <$> headers <*> body <* end
+abc = (,) <$> headers <*> body 
 
 -- BODY
-body = (::) <$> score <*> many
+body : Parser (List BodyPart)
+body = manyTill'
         (choice 
           [ score
           , tuneBodyHeader
           ]
-        )
+        ) end
+         
 
+
+{-
+body = (::) <$> score <*> manyTill'
+        (choice 
+          [ score
+          , tuneBodyHeader
+          ]
+        ) end
+-}
+
+{-
 score : Parser BodyPart 
 score = Score <$> musicLine <*> endLine 
 
 musicLine : Parser (List Music)
 musicLine = many musicItem
+-}
+
+
+score : Parser BodyPart 
+score = Score <$> manyTill musicItem eol
+          <?> "score"
 
 musicItem : Parser Music
 musicItem = rec <| \() -> 
@@ -79,8 +98,10 @@ musicItem = rec <| \() ->
        , decoration
        , spacer
        , ignore
+       , continuation
        ]       
     )
+   
 
 
 {- a bar line (plus optional repeat iteration marker)
@@ -442,8 +463,7 @@ unsupportedHeader = succeed UnsupportedHeader <* unsupportedHeaderCode <* strToE
 {- ditto for headers that may appear in the tune body -}
 tuneBodyHeader : Parser BodyPart
 tuneBodyHeader  = BodyInfo <$> tuneBodyInfo <* eol
-
-
+                     <?> "tune body header"
 
 {- whereas information fields can be used inline -}
 informationField : Parser Header
@@ -507,6 +527,7 @@ tuneBodyInfo =
 {- relax the spec in the pasring of headers to allow body-only tunes -}
 headers : Parser TuneHeaders
 headers = many header <?> "headers"
+-- headers = many1 header <?> "headers"
 
 {- comments.  These are introduced with '%' and can occur anywhere.
    The stylesheet directive '%%' is not recognized here and will
@@ -558,17 +579,11 @@ ignore = succeed Ignore <* (regex "[#@;`\\*\\?]+")
    still prevalent in the wild.  We take the view that we must do our best to recognise 
    them and then throw them away (along with any other later stuff in the line)
 
-   Return True if we have a continuation
+   Return Continuation if we have a continuation
 -}
-continuation : Parser Bool
-continuation = succeed True <* char '\\' <* regex "[^\r\n]*"
-
-endLine : Parser Bool
-endLine = 
-    log "end line" <$>
-          (withDefault False <$> maybe continuation <* regex "(\r\n|\n|\r)" )
-            <?> "end line"
-
+continuation : Parser Music
+continuation = succeed Continuation <* char '\\' <* regex "[^\r\n]*"
+                  <?> "continuation"
 
 headerCode : Char -> Parser Char
 headerCode c = char c <* char ':' <* whiteSpace
@@ -888,21 +903,6 @@ toTupletInt s =
     |> Result.toMaybe
     |> withDefault 3   -- default can't happen because all strings are regex-parsed 2-9    
 
-{- look ahead to allow a sneak preview of the next tokens
-   in productions such as many choice [...] and thus support
-   better error positioning.
-   Many thanks to Bogdan Popa for showing me how to do this
--}
-lookAhead : Parser a -> Parser a
-lookAhead p =
-  primitive <| \cx ->
-    case app p cx of
-     (Ok res, _) ->
-        (Ok res, cx)
-     (Err m, cx') ->
-        log "lookahead error" (Err m, cx')
-
-
                 
 {- just for debug purposes - consume the rest of the input -}
 {-
@@ -926,8 +926,8 @@ parse s =
 parseError : ParseError -> String
 parseError pe =
   let
-    msg =
-      List.foldr String.append "" pe.msgs
+    append a b = a ++ "," ++ b
+    msg = List.foldr append "" pe.msgs
   in
     "parse error: " ++ msg ++ " on " ++ pe.input ++ " at position " ++ toString (pe.position)
 
