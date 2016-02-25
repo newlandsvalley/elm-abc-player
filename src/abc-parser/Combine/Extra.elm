@@ -1,5 +1,7 @@
 module Combine.Extra 
-   ( manyTill' )
+   ( manyTill'
+   , leftBiasedOr
+   )
    where
 
 {-|  Extension functions to elm-combine to allow custom error-reporting
@@ -8,6 +10,7 @@ module Combine.Extra
 
 # Functions
 @docs manyTill'
+    , leftBiasedOr
 
 -}
 
@@ -16,6 +19,11 @@ import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
 import Debug exposing (..)
 
+{-   Provide a version of manyTill that preserves the error position of the 'many' rather than of the 'end'
+     Many thanks to Bogdan Papa for helping me with this
+
+     manyTill' Parser res -> Parser end -> Parser (List res)
+-}
 manyTill' p end =
   let
     accumulate acc cx =
@@ -36,9 +44,35 @@ manyTill' p end =
             -- `manyTill`, we return `p`'s error rather than `end`'s.
             (Err ms, ecx) ->
               let 
-                mcx = log "original ctc" origcx
+                mcx = log "original ctx" origcx
               in
-                (Err (log "mt' msg" ms), (log "mt ctx" ecx))
+                (Err (log "mt' msg" ms), (log "mt' ctx" ecx))
   in
     primitive <| accumulate []
+
+{-   Provide a version of or that preserves the error position of the left hand branch rather than
+     the start of the 'orred' construction.  Used to ensure manyTill' error positions filter up through 'or'
+
+     leftBiasedOr : Parser res -> Parser res -> Parser res
+-}
+leftBiasedOr lp rp =
+  primitive <| \cx ->
+    let res = app lp cx in
+    case res of
+      (Ok _, _) ->
+        res
+
+      (Err lm, lcx) ->
+        let res' = app rp cx in
+        case res' of
+          (Ok _, _) ->
+            res'
+
+          (Err rm, rcx) ->
+             let 
+               mcx = log "original or ctx" cx
+             in
+               -- preserve lcx rather than cx
+               (Err (lm ++ rm), log "left" lcx)
+
 

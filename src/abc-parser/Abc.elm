@@ -10,7 +10,7 @@ module Abc
 # Definition
 
 # Functions
-@docs parse, errorMessage
+@docs parse, parseError
 
 # Types
 @docs ParseError
@@ -21,7 +21,7 @@ import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
 import Combine.Num exposing (..)
-import Combine.Extra exposing (manyTill')
+import Combine.Extra exposing (manyTill', leftBiasedOr)
 import Ratio exposing (Rational, over, fromInt)
 import String exposing (fromList, toList, foldl)
 import Char exposing (fromCode, toCode, isUpper)
@@ -47,40 +47,17 @@ abc = (,) <$> headers <*> body
 
 -- BODY
 body : Parser (List BodyPart)
-body = manyTill'
-        (choice 
-          [ score
-          , tuneBodyHeader
-          ]
-        ) end
-         
-
-
-{-
-body = (::) <$> score <*> manyTill'
-        (choice 
-          [ score
-          , tuneBodyHeader
-          ]
-        ) end
--}
-
-{-
-score : Parser BodyPart 
-score = Score <$> musicLine <*> endLine 
-
-musicLine : Parser (List Music)
-musicLine = many musicItem
--}
-
+body = (::) <$> 
+    score <*> manyTill'
+      (score `leftBiasedOr` tuneBodyHeader)
+        end
 
 score : Parser BodyPart 
-score = Score <$> manyTill musicItem eol
-          <?> "score"
-
-musicItem : Parser Music
-musicItem = rec <| \() -> 
-    log "music item" <$>
+score = Score <$> manyTill' scoreItem eol
+          
+scoreItem : Parser Music
+scoreItem = rec <| \() -> 
+    log "score item" <$>
     (
     choice 
        [ 
@@ -101,7 +78,7 @@ musicItem = rec <| \() ->
        , continuation
        ]       
     )
-   
+      <?> "score item"   
 
 
 {- a bar line (plus optional repeat iteration marker)
@@ -163,6 +140,7 @@ rest = Rest <$> (withDefault (fromInt 1) <$> (regex "[XxZz]" *> maybe noteDur))
 {- a free - format chord symbol - see 4.18 Chord symbols -}
 chordSymbol : Parser Music
 chordSymbol = ChordSymbol <$> quotedString
+                 <?> "chord symbol"
 
 {- an annotation to the score 
   4.19 Annotations
@@ -180,14 +158,17 @@ chordSymbol = ChordSymbol <$> quotedString
 -}
 annotation : Parser Music
 annotation = buildAnnotation <$> annotationString
+                 <?> "annotation"
 
 chord : Parser Music
 chord = Chord <$> abcChord
-         -- between (char '[') (char ']') (many1 abcNote)
+                 <?> "chord"
+        
 
 inline : Parser Music
 inline = Inline <$> 
            between (char '[') (char ']') tuneBodyInfo
+                 <?> "inline header"
 
 graceNote : Parser Music
 graceNote =  between (char '{') (char '}') grace
@@ -203,9 +184,11 @@ acciaccatura = (\_ -> True) <$> maybe (char '/')
 
 decoration : Parser Music
 decoration = Decoration <$> choice [shortDecoration, longDecoration]
+                  <?> "decoration"
 
 shortDecoration : Parser String
 shortDecoration = regex "[\\.~HLMOPSTuv]"
+                  <?> "short decoration"
 
 longDecoration : Parser String
 longDecoration =  between (char '!') (char '!') (regex "[^\r\n!]*")
@@ -463,7 +446,7 @@ unsupportedHeader = succeed UnsupportedHeader <* unsupportedHeaderCode <* strToE
 {- ditto for headers that may appear in the tune body -}
 tuneBodyHeader : Parser BodyPart
 tuneBodyHeader  = BodyInfo <$> tuneBodyInfo <* eol
-                     <?> "tune body header"
+                    <?> "tune body header"
 
 {- whereas information fields can be used inline -}
 informationField : Parser Header
@@ -546,7 +529,7 @@ whiteSpace = String.fromList <$> (many <| choice [space, tab])
 -- at least one (intended) space somewhere inside the music body
 spacer : Parser Music
 spacer = Spacer <$> ( List.length <$> (many1 scoreSpace))
--- spacer = Spacer <$> ( List.length <$> (many1 space))
+           <?> "space"
 
 {- space within a line of the tune's score -}
 scoreSpace : Parser Char
@@ -915,7 +898,7 @@ restOfInput = many anyChar
 {-| entry point - Parse an ABC tune image -}
 parse : String -> Result.Result ParseError AbcTune
 parse s =
-  case Combine.parse (abc) s of
+  case Combine.parse abc s of
     (Ok n, _) ->
       Ok n
 

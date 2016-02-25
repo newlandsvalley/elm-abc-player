@@ -36,6 +36,7 @@ module Abc.ParseTree
     , Header
     , Music
     , AbcNote
+    , AbcChord
     , Bar
     , Repeat
     , NoteDuration
@@ -83,6 +84,7 @@ type alias AbcNote =
   ,  tied : Bool   -- to the next note
   }
 
+{-| a Chord -}
 type alias AbcChord = 
   { notes : List AbcNote
   , accidental : Maybe Accidental
