@@ -92,6 +92,12 @@ instKeySig =
 xmplKeySig = 
   "K: AMajor \r\n| A2 Bc dcBc [CEa] |"
 
+instFlatKeySig =
+  "If your key is a major key, you can, if you want, leave out the word 'Major'.  If it is a flat key, you use 'b' and if a sharp key, '#'. "
+
+xmplFlatKeySig = 
+   "K: Bb\r\n|(3FGA | BfdB AecA | FdBF D4 |"
+
 instNaturals = 
    "If your key means that certain notes are sharpened or flattened, but you need to play the 'natural' " ++
    " (unsharpened or unflattened) note, then you can override the key by using an equals symbol immediately before the note." ++
@@ -124,25 +130,39 @@ instTempo =
    " tempo with the Q header."
 
 xmplTempo =
- "L: 1/8 \r\nQ: 1/4=60\r\nA B c def"
+  "L: 1/8 \r\nQ: 1/4=60\r\nA B c def"
 
-instTie = "A tie joins together two notes of the same pitch.  It is indicated by placing a hyphen directly after the first note of the pair." ++
-          " The second note may follow immediately, but it can be separated by spaces or even a bar line.  The effect is to play one long note" ++
-          " with the combined duration of the pair.  If the notes are of different pitches, the tie will simply be ignored." 
+instTie = 
+  "A tie joins together two notes of the same pitch.  It is indicated by placing a hyphen directly after the first note of the pair." ++
+  " The second note may follow immediately, but it can be separated by spaces or even a bar line.  The effect is to play one long note" ++
+  " with the combined duration of the pair.  If the notes are of different pitches, the tie will simply be ignored." 
 
-xmplTie = "| G2 | c2c2 A2Ac | B2B2- B2AB |"
+xmplTie = 
+   "| G2 | c2c2 A2Ac | B2B2- B2AB |"
 
-instTriplet = "A triplet is usually used if you want to play three notes in the time normally taken by two."  ++
-              " You introduce three notes of the same length placed together with the symbol (3" ++
-              " This is extremely common in Swedish polskas - for example the start of the Grind Hans Jässpôdspolska."
+instTriplet = 
+   "A triplet is usually used if you want to play three notes in the time normally taken by two."  ++
+   " You introduce three notes of the same length placed together with the symbol (3" ++
+   " This is extremely common in Swedish polskas - for example the start of the Grind Hans Jässpôdspolska."
 
-xmplTriplet = "K:Dmaj\r\n| A2 d2 e>f | (3g2f2d2 B2- |"
+xmplTriplet = 
+   "K:Dmaj\r\n| A2 d2 e>f | (3g2f2d2 B2- |"
 
-instQuadruplet = "Quadruplets are used if you want to play four notes in the time usually taken by three." ++
-                 " In a similar fashion to triplets, introduce four notes of the same length placed together" ++
-                 " with the symbol (4. This example comntains triplets, a tie and a quadruplet."
+instComplexTriplet = 
+   "If your triplet has notes of different lengths, you have to use the complex triplet notation." ++
+   " For example (3:2:4d2d2Bd means play the rhythm of three notes in the time of two over the following group" ++
+   " of four notes."
 
-xmplQuadruplet = "K:Amaj\r\n| (3efg a2 a>b | (3agf e2-e>e | (4f2d2e2c2 | d>f (3f2e2c2 |"
+xmplComplexTriplet = 
+   "K:Gmaj\r\n| D2 G>A B>c| (3:2:4d2d2Bd g2|"
+
+instQuadruplet = 
+   "Quadruplets are used if you want to play four notes in the time usually taken by three." ++
+   " In a similar fashion to triplets, introduce four notes of the same length placed together" ++
+   " with the symbol (4. This example comntains triplets, a tie and a quadruplet."
+
+xmplQuadruplet = 
+   "K:Amaj\r\n| (3efg a2 a>b | (3agf e2-e>e | (4f2d2e2c2 | d>f (3f2e2c2 |"
 
 lessons : Array Lesson 
 lessons =
@@ -156,12 +176,14 @@ lessons =
   , { title = "strathspeys", instruction = instStrathspey, example = xmplStrathspey }
   , { title = "chords", instruction = instChords, example = xmplChords }
   , { title = "key signature", instruction = instKeySig, example = xmplKeySig }
+  , { title = "sharp and flat key signatures", instruction = instFlatKeySig, example = xmplFlatKeySig }
   , { title = "naturals", instruction = instNaturals, example = xmplNaturals }
   , { title = "sharps and flats", instruction = instAccidentals, example = xmplAccidentals }
   , { title = "how long is a unit note?", instruction = instUnitNote, example = xmplUnitNote }
   , { title = "tempo", instruction = instTempo, example = xmplTempo }
   , { title = "tie", instruction = instTie, example = xmplTie }
   , { title = "triplet", instruction = instTriplet, example = xmplTriplet }
+  , { title = "triplet with differing note lengths", instruction = instComplexTriplet, example = xmplComplexTriplet }
   , { title = "quadruplet", instruction = instQuadruplet, example = xmplQuadruplet }
   ] |> Array.fromList
 
