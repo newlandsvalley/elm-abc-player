@@ -1,5 +1,6 @@
 module Music.Notation
-  ( KeyClass
+  ( KeySet
+  , KeyClass
   , MidiPitch
   , AbcTempo
   , NoteTime
@@ -16,7 +17,7 @@ module Music.Notation
 # Definition
 
 # Data Types
-@docs KeyClass, MidiPitch, AbcTempo, NoteTime
+@docs KeySet, KeyClass, MidiPitch, AbcTempo, NoteTime
 
 # Functions
 @docs keySet, scale, accidentalImplicitInKey, dotFactor, toMidiPitch, noteDuration
@@ -38,7 +39,9 @@ type alias ChromaticScale = List KeyClass
 
 type alias Scale = List KeyClass
 
-{- the set of accidentals in a key signature -}
+{- the set of accidentals in a key signature 
+   (or the set of accidentals (if any) previously set explicitly in the bar)
+-}
 type alias KeySet = List KeyClass
 
 type alias Intervals = List Int
@@ -82,16 +85,35 @@ scale ks =
 {-| return an accidental if it is implicitly there in the key signature 
     attached to the pitch class of the note -}
 accidentalImplicitInKey : AbcNote -> KeySignature -> Maybe Accidental
-accidentalImplicitInKey n ks  =
+accidentalImplicitInKey n ksig  =
+    accidentalInKeySet n (keySet ksig)
+
+{-| return an accidental if it is contained in the key set for the pitch class in question
+    This is used as an implementation for the accidental checking in key signatures and 
+    also directly for accidental checking for those accidentals explicitly marked earlier
+    in the bar.
+
+    -- very inefficient.  I'll fix this once elm allows me to use my ADTs in Dicts
+ -}
+accidentalInKeySet : AbcNote -> KeySet -> Maybe Accidental
+accidentalInKeySet n ks =
   let
-    keys = keySet ks
     sharpTarget = (n.pitchClass, Just Sharp)
     flatTarget = (n.pitchClass, Just Flat)
+    doubleSharpTarget = (n.pitchClass, Just DoubleSharp)
+    doubleFlatTarget = (n.pitchClass, Just DoubleFlat)
+    naturalTarget = (n.pitchClass, Just Natural)
   in
-    if (member sharpTarget keys) then
+    if List.member sharpTarget ks then
       Just Sharp
-    else if  (member flatTarget keys) then
+    else if List.member flatTarget ks then
       Just Flat
+    else if List.member doubleSharpTarget ks then
+      Just DoubleSharp
+    else if List.member doubleFlatTarget ks then
+      Just DoubleFlat
+    else if List.member naturalTarget ks then
+      Just Natural
     else
       Nothing
 
@@ -109,10 +131,15 @@ dotFactor i =
     3 -> 0.875 
     _ -> 0
 
-{-| convert an ABC note pitch to a MIDI pitch -}
-toMidiPitch : AbcNote -> KeySignature -> MidiPitch
-toMidiPitch n ks =
-  (n.octave * 12) + midiPitchOffset n ks
+{-| convert an ABC note pitch to a MIDI pitch 
+   AbcNote - the note in question
+   KeySignature - the key signature
+   KeySet - any notes in this bar which have previously been set explicitly to an accidental which are thus inherited by this note
+   MidiPitch - the resulting pitch of the MIDI note
+-}
+toMidiPitch : AbcNote -> KeySignature -> KeySet -> MidiPitch
+toMidiPitch n ks barAccidentals =
+  (n.octave * 12) + midiPitchOffset n ks barAccidentals
 
 {-| translate a tempo and unit note length to a real world note duration -}
 noteDuration : AbcTempo -> Rational -> NoteTime
@@ -317,12 +344,14 @@ isFlatMajorKey target =
       Just a -> (a == Flat)
 
 {- convert an AbcNote (pich class and accidental) to a pitch offset in a chromatic scale -}
-midiPitchOffset : AbcNote -> KeySignature -> Int
-midiPitchOffset n ks =
+midiPitchOffset : AbcNote -> KeySignature -> KeySet -> Int
+midiPitchOffset n ks barAccidentals =
   let 
+    inBarAccidental = accidentalInKeySet n barAccidentals
     inKeyAccidental = accidentalImplicitInKey n ks
-    -- look first for an explicit then for an implicit accidental attached to this key class
-    maybeAccidental = oneOf [n.accidental, inKeyAccidental]
+    -- look first for an explicit note accidental, then for an explicit for the same note that occurred earlier in the bar and 
+    -- finally look for an implicit accidental attached to this key signature
+    maybeAccidental = oneOf [n.accidental, inBarAccidental, inKeyAccidental]
     f a = case a of
       Sharp -> "#"
       Flat -> "b"

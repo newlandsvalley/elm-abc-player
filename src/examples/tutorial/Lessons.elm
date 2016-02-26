@@ -95,18 +95,19 @@ xmplKeySig =
 instNaturals = 
    "If your key means that certain notes are sharpened or flattened, but you need to play the 'natural' " ++
    " (unsharpened or unflattened) note, then you can override the key by using an equals symbol immediately before the note." ++
-   " For example, this reverts the previous tune to a minor feel although the key is still a major one."
+   " Remember that, as in a score, you only need to mark as natural the first occurrence of the note in any given bar." ++
+   " For example, this reverts the previous tune to a minor feel although the key is still a major one. Each C is natural."
 
 xmplNaturals = 
-  "K: AMajor \r\n| A2 B=c d=cB=c [=CEa] |"
+  "K: AMajor \r\n| A2 B=c dcBc [CEa] |"
 
 instAccidentals =
    "Similarly, you can sharpen a note by placing a caret symbol (^) immediately before it and flatten it using an underscore" ++
    " symbol (_). If you need a double sharp or double flat, then just double the appropriate symbol." ++
-   " This example reverts the major feel although the key is now A Minor."
+   " This example reverts the major feel although the key is now A Minor. Each C is sharpened."
 
 xmplAccidentals =
- "K: AMinor \r\n| A2 B^c d^cB^c [^CEa] |"
+ "K: AMinor \r\n| A2 B^c dcBc [CEa] |"
 
 instUnitNote =
    "You may have noticed when we first introduced notes that we talked about their duration in 'units'.  But how long is a unit?" ++
