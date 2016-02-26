@@ -46,7 +46,8 @@ type NoteEvent =
    | AChord (List SingleNote)
    
 type alias ABar =
-  {  repeat : Maybe Repeat    -- the bar owns a repeat of some kind
+  {  number : Int             -- sequential from zero
+  ,  repeat : Maybe Repeat    -- the bar owns a repeat of some kind
   ,  iteration : Maybe Int    -- the bar has an iteration marker  (|1  or |2 etc)
   ,  accidentals : KeySet     -- any such notes marked explicitly as accidentals (updated in sequence)
   ,  notes : List NoteEvent   -- the notes in the bar
@@ -58,6 +59,7 @@ type alias TranslationState =
    { keySignature : KeySignature
    , tempo : AbcTempo
    , tempoModifier : Float
+   , nextBarNumber : Int
    , thisBar : ABar
    }
 
@@ -77,17 +79,20 @@ defaultKey =
   , mode = Major
   } 
   
-defaultBar : ABar
-defaultBar = 
-  {  repeat = Nothing
+defaultBar : Int -> ABar
+defaultBar i = 
+  {  number = i
+  ,  repeat = Nothing
   ,  iteration = Nothing
   ,  accidentals = []   
   ,  notes = []
   }
 
+{-
 isDefaultBar : ABar -> Bool
 isDefaultBar b =
   b == defaultBar
+-}
 
 isEmptyBar : ABar -> Bool
 isEmptyBar b =
@@ -276,15 +281,23 @@ translateMusic m acc =
         let 
           -- don't add to the melody the existing bar accumulated by the state if it's empty
           newMelody = 
-            if (isDefaultBar state.thisBar) then
+            if (isEmptyBar state.thisBar) then
               melodyLine
             else
               let
                 rb = log "the next bar" state.thisBar
               in
                 state.thisBar :: melodyLine
-          newBar = { defaultBar | repeat = b.repeat, iteration = b.iteration }
-          newState =  { state | thisBar = newBar }
+          -- don't increment the bar number if it's an empty bar
+          nextBarNumber =   
+            if (isEmptyBar state.thisBar) then
+               state.nextBarNumber
+            else
+               state.nextBarNumber + 1
+
+          nextBar = defaultBar nextBarNumber
+          newBar = { nextBar | repeat = b.repeat, iteration = b.iteration }
+          newState =  { state | thisBar = newBar, nextBarNumber = nextBarNumber }
         in
           (newMelody, newState)
       _ -> acc
@@ -315,7 +328,8 @@ fromAbc tune =
     defaultState = ([], { keySignature = defaultKey
                         , tempo = defaultTempo
                         , tempoModifier = 1.0
-                        , thisBar = defaultBar
+                        , nextBarNumber = 0
+                        , thisBar = defaultBar 0
                         })
     -- update this from the header state if we have any headers
     headerState = List.foldl updateState defaultState (fst tune)
