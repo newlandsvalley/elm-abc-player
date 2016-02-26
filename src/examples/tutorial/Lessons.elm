@@ -132,6 +132,18 @@ instTie = "A tie joins together two notes of the same pitch.  It is indicated by
 
 xmplTie = "| G2 | c2c2 A2Ac | B2B2- B2AB |"
 
+instTriplet = "A triplet is usually used if you want to play three notes in the time normally taken by two."  ++
+              " You introduce three notes of the same length placed together with the symbol (3" ++
+              " This is extremely common in Swedish polskas - for example the start of the Grind Hans Jässpôdspolska."
+
+xmplTriplet = "K:Dmaj\r\n| A2 d2 e>f | (3g2f2d2 B2- |"
+
+instQuadruplet = "Quadruplets are used if you want to play four notes in the time usually taken by three." ++
+                 " In a similar fashion to triplets, introduce four notes of the same length placed together" ++
+                 " with the symbol (4. This example comntains triplets, a tie and a quadruplet."
+
+xmplQuadruplet = "K:Amaj\r\n| (3efg a2 a>b | (3agf e2-e>e | (4f2d2e2c2 | d>f (3f2e2c2 |"
+
 lessons : Array Lesson 
 lessons =
   [
@@ -149,6 +161,8 @@ lessons =
   , { title = "how long is a unit note?", instruction = instUnitNote, example = xmplUnitNote }
   , { title = "tempo", instruction = instTempo, example = xmplTempo }
   , { title = "tie", instruction = instTie, example = xmplTie }
+  , { title = "triplet", instruction = instTriplet, example = xmplTriplet }
+  , { title = "quadruplet", instruction = instQuadruplet, example = xmplQuadruplet }
   ] |> Array.fromList
 
 

@@ -27,6 +27,7 @@ module Music.Notation
 import List.Extra exposing (getAt, splitAt, elemIndex, tails)
 import List exposing (member)
 import Maybe exposing (withDefault, oneOf)
+import Maybe.Extra exposing (join)
 import String exposing (contains, endsWith, fromChar)
 import Dict exposing (Dict, fromList, get)
 import Abc.ParseTree exposing (Mode (..), Accidental (..), KeySignature, PitchClass (..), AbcNote)
@@ -92,11 +93,24 @@ accidentalImplicitInKey n ksig  =
     This is used as an implementation for the accidental checking in key signatures and 
     also directly for accidental checking for those accidentals explicitly marked earlier
     in the bar.
-
-    -- very inefficient.  I'll fix this once elm allows me to use my ADTs in Dicts
- -}
+-}
 accidentalInKeySet : AbcNote -> KeySet -> Maybe Accidental
 accidentalInKeySet n ks =
+  let
+    f (pc, macc) = (toString pc, macc) 
+    -- make the key comparable
+    comparableks = List.map f ks
+    -- make a dictionary now we have a comparable key
+    lookup = Dict.fromList comparableks
+  in
+    -- just look up the (comparable) target
+    Dict.get (toString n.pitchClass) lookup
+      |> join
+
+{- old, very inefficient version.  I'll fix this once elm allows me to use my ADTs in Dicts
+
+accidentalInKeySet'' : AbcNote -> KeySet -> Maybe Accidental
+accidentalInKeySet'' n ks =
   let
     sharpTarget = (n.pitchClass, Just Sharp)
     flatTarget = (n.pitchClass, Just Flat)
@@ -116,6 +130,9 @@ accidentalInKeySet n ks =
       Just Natural
     else
       Nothing
+ -}
+
+
 
 {-| the amount by which you increase the duration of a (multiply) dotted note 
    i.e. duration of a note dotted by x is multiplied by:
