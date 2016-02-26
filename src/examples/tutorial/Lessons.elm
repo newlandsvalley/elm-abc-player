@@ -164,6 +164,16 @@ instQuadruplet =
 xmplQuadruplet = 
    "K:Amaj\r\n| (3efg a2 a>b | (3agf e2-e>e | (4f2d2e2c2 | d>f (3f2e2c2 |"
 
+instTitle =
+   "Very many of our previous examples have had no headers - only the melody line.  But, in fact a legitimate ABC tune always" ++
+   " requires some headers.  The first is largely irrelevant - a reference number denoted by X.  Any number will do" ++
+   " in most cases. The second header must be the tune title - T. You should also include the L (note length) and  M (meter) headers" ++
+   " introduced earlier. Finally, the K (key) header should always be the last one."
+
+xmplTitle =
+  "X:1\r\nT:Camptown Races\r\nM:4/4\r\nL:1/8\r\nK:D\r\n|AAFA|BAF2|FE2z|FE2z|AAFA|BAF2|E2FE|D2-D2|\r\n|D>DFA|d4|B>BdB|A3F|\r\nAA F/2F/2 A/2A/2|BAF2|EF/2-G/2FE|D4 |\r\n"
+
+
 lessons : Array Lesson 
 lessons =
   [
@@ -185,6 +195,7 @@ lessons =
   , { title = "triplet", instruction = instTriplet, example = xmplTriplet }
   , { title = "triplet with differing note lengths", instruction = instComplexTriplet, example = xmplComplexTriplet }
   , { title = "quadruplet", instruction = instQuadruplet, example = xmplQuadruplet }
+  , { title = "tune title", instruction = instTitle, example = xmplTitle }
   ] |> Array.fromList
 
 
