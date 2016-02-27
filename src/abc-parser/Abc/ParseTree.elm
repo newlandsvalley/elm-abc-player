@@ -237,6 +237,7 @@ type Header =
     | WordsAligned String               -- words aligned with notes
     | ReferenceNumber Int
     | Transcription String
+    | FieldContinuation String
     | Comment String
     | UnsupportedHeader
 

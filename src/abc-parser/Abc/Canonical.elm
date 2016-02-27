@@ -266,6 +266,7 @@ header h = case h of
    WordsAligned s -> "w: " ++ s
    ReferenceNumber i -> "X: " ++ (toString i)
    Transcription s -> "Z: " ++ s
+   FieldContinuation s -> "+: " ++ s 
    Comment s -> "%" ++ s
    _ -> ""
 

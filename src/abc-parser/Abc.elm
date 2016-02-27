@@ -233,17 +233,17 @@ meterDefinition =
    ]
 
 commonTime : Parser (Maybe MeterSignature)
-commonTime = succeed (Just (4,4)) <* char 'C'
+commonTime = (Just (4,4)) <$ char 'C'
 
 cutTime : Parser (Maybe MeterSignature)
-cutTime = succeed (Just (2,2)) <* string "C|"
+cutTime = (Just (2,2)) <$ string "C|"
 
 -- can't use Rationals for these because they cancel
 meterSignature : Parser (Maybe MeterSignature)
 meterSignature = Just <$> ( (,) <$> int <* char '/' <*> int <* whiteSpace)
 
 nometer : Parser (Maybe MeterSignature)
-nometer = succeed Nothing <* string "none"
+nometer = Nothing <$ string "none"
 
 noteDuration : Parser NoteDuration
 noteDuration = rational <* whiteSpace
@@ -297,32 +297,31 @@ mode = choice
 
 
 minor : Parser Mode
--- minor = succeed Minor <* whiteSpace <* regex "(M|m)(I|i)(N|n)([A-Za-z])*"
-minor = succeed Minor <* whiteSpace <* regex "(M|m)([A-Za-z])*"
+minor = Minor <$ whiteSpace <* regex "(M|m)([A-Za-z])*"
 
 major : Parser Mode
-major = succeed Major <* whiteSpace <* regex "(M|m)(A|a)(J|j)([A-Za-z])*"
+major = Major <$ whiteSpace <* regex "(M|m)(A|a)(J|j)([A-Za-z])*"
 
 ionian : Parser Mode
-ionian = succeed Ionian <* whiteSpace <* regex "(I|i)(O|o)(N|n)([A-Za-z])*"
+ionian = Ionian <$ whiteSpace <* regex "(I|i)(O|o)(N|n)([A-Za-z])*"
 
 dorian : Parser Mode
-dorian = succeed Dorian <* whiteSpace <* regex "(D|d)(O|o)(R|r)([A-Za-z])*"
+dorian = Dorian <$ whiteSpace <* regex "(D|d)(O|o)(R|r)([A-Za-z])*"
 
 phrygian : Parser Mode
-phrygian = succeed Phrygian <* whiteSpace <* regex "(P|p)(H|h)(R|r)([A-Za-z])*"
+phrygian = Phrygian <$ whiteSpace <* regex "(P|p)(H|h)(R|r)([A-Za-z])*"
 
 lydian : Parser Mode
-lydian = succeed Lydian <* whiteSpace <* regex "(L|l)(Y|y)(D|d)([A-Za-z])*"
+lydian = Lydian <$ whiteSpace <* regex "(L|l)(Y|y)(D|d)([A-Za-z])*"
 
 mixolydian : Parser Mode
-mixolydian = succeed Mixolydian <* whiteSpace <* regex "(M|m)(I|i)(X|x)([A-Za-z])*"
+mixolydian = Mixolydian <$ whiteSpace <* regex "(M|m)(I|i)(X|x)([A-Za-z])*"
  
 aeolian : Parser Mode
-aeolian = succeed Aeolian <* whiteSpace <* regex "(A|a)(E|e)(O|o)([A-Za-z])*"
+aeolian = Aeolian <$ whiteSpace <* regex "(A|a)(E|e)(O|o)([A-Za-z])*"
 
 locrian : Parser Mode
-locrian = succeed Locrian <* whiteSpace <* regex "(L|l)(O|o)(C|c)([A-Za-z])*"
+locrian = Locrian <$ whiteSpace <* regex "(L|l)(O|o)(C|c)([A-Za-z])*"
  
  
 -- Headers
@@ -434,13 +433,18 @@ transcription : Parser Header
 transcription = Transcription <$> ((headerCode 'Z') *> strToEol)
                <?> "Z header"
 
+fieldContinuation : Parser Header
+fieldContinuation = FieldContinuation <$> ((headerCode '+') *> strToEol)
+               <?> "field continuation"
+
+
 {- a header is an information field up to and including the end of line marker -}
 header : Parser Header
 header = informationField <* eol
 
 {- unsupported header reserved for future use -}
 unsupportedHeader : Parser Header
-unsupportedHeader = succeed UnsupportedHeader <* unsupportedHeaderCode <* strToEol
+unsupportedHeader = UnsupportedHeader <$ unsupportedHeaderCode <* strToEol
                <?> "unsupported header"
 
 {- ditto for headers that may appear in the tune body -}
@@ -491,6 +495,7 @@ anywhereInfo =
          , userDefined
          , voice
          , wordsAfter
+         , fieldContinuation
          , comment
          ]
             <?> "anywhere info"

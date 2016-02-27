@@ -96,7 +96,7 @@ instFlatKeySig =
   "If your key is a major key, you can, if you want, leave out the word 'Major'.  If it is a flat key, you use 'b' and if a sharp key, '#'. "
 
 xmplFlatKeySig = 
-   "K: Bb\r\n|(3FGA | BfdB AecA | FdBF D4 |"
+   "K: Bb\r\n| BfdB AecA | FdBF D4 |"
 
 instNaturals = 
    "If your key means that certain notes are sharpened or flattened, but you need to play the 'natural' " ++
