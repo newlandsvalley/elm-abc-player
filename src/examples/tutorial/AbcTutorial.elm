@@ -16,6 +16,8 @@ import SoundFont exposing (..)
 import Abc exposing (..)
 import Music.Notation exposing (..)
 import AbcPerformance exposing (..)
+import Performance exposing (..)
+import Repeats exposing (..)
 import Notable exposing (..)
 import Lessons exposing (..)
 import Debug exposing (..)
@@ -156,7 +158,7 @@ playAbc m =
     m.abc
       |> terminateLine
       |> parse 
-      |> fromAbcResult 
+      |> melodyFromAbcResult 
       |> toPerformance
   in case pr of
     Ok _ ->

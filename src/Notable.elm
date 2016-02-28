@@ -3,7 +3,7 @@ module Notable ( Notable (..)
                , fromMelodyLine) where
 
 
-import AbcPerformance exposing (..)
+import Performance exposing (..)
 import Maybe exposing (map, withDefault)
 import Debug exposing (..)
 

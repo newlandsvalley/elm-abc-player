@@ -173,6 +173,27 @@ instTitle =
 xmplTitle =
   "X:1\r\nT:Camptown Races\r\nM:4/4\r\nL:1/8\r\nK:D\r\n|AAFA|BAF2|FE2z|FE2z|AAFA|BAF2|E2FE|D2-D2|\r\n|D>DFA|d4|B>BdB|A3F|\r\nAA F/2F/2 A/2A/2|BAF2|EF/2-G/2FE|D4 |\r\n"
 
+instRhythm =
+  "You can use the R (rhythm) header to indicate the type of tune (jig, reel, polska etc.). In most ABC collections, this field is optional" ++
+  " However, tradtunedb requires it to be present so that you can search easily for tunes of the same type" 
+
+xmplRhythm =
+  "X: 1\r\nT: Kapten Lindholms Engelska\r\nR: engelska\r\nM: 4/4\r\nL: 1/8\r\nK:Amaj\r\n" ++
+  "| ed | cAce dcdf | ecAF E2 ed | cABc defg | aece agfe | cAce dcdf | ecAF E2 ed | cABc defg | a2 ag a2 |\r\n" ++
+  "| e2 | aac'e aac'e | bbd'e bbd'e | aac'e aac'e | efed cB A2| fdfa ecea | fdfa ecea |fdfa gegb | baag a2 |\r\n"
+
+instInformation =
+  "There are various other headers that you can use to add information about the tune as free text.  The most important are these: " ++
+  " C (composer), O (geographical origin), S (source - where or how the tune was collected) and Z (the tune transcriber)."
+
+xmplInformation =
+  "X: 1\r\nT: Gubbdansen\r\nS: from 12 låtar för 2 eller 3 fioler med Gärdebylåten i Hjort Anders Olssons originalsättning\r\n" ++
+  "Z: John Batchellor\r\nR: polska\r\nM: 3/4\r\nL: 1/16\r\nK:Dmin\r\n" ++
+  "| f3g f4 a4 | a2ba g2ag f2e2 | d3e f2g2 a2f2 | f3e e2^c2 A4 |\r\n" ++
+  "| ^c2c2 d2d2 e2e2 | f2f2 gfed e4 | ^c2c2 d2d2 e2e2 | f2f2 gfed e4 |\r\n" ++
+  "a4 b2a2 g2f2 | f2ef g2f2 e2d2 | fed^c c4 d4 |\r\n"
+
+
 
 lessons : Array Lesson 
 lessons =
@@ -196,6 +217,8 @@ lessons =
   , { title = "triplet with differing note lengths", instruction = instComplexTriplet, example = xmplComplexTriplet }
   , { title = "quadruplet", instruction = instQuadruplet, example = xmplQuadruplet }
   , { title = "tune title", instruction = instTitle, example = xmplTitle }
+  , { title = "rhythm", instruction = instRhythm, example = xmplRhythm }
+  , { title = "information headers", instruction = instInformation, example = xmplInformation }
   ] |> Array.fromList
 
 

@@ -14,6 +14,7 @@ import SoundFont exposing (..)
 import Abc exposing (..)
 import Music.Notation exposing (..)
 import AbcPerformance exposing (..)
+import Performance exposing (..)
 import Notable exposing (..)
 
 -- MODEL
@@ -156,7 +157,7 @@ parseLoadedFile r =
       Text s -> 
         s 
          |> parse 
-         |> fromAbcResult 
+         |> melodyFromAbcResult 
          |> formatError parseError
          |> toPerformance
       Blob b -> 

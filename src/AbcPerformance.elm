@@ -1,17 +1,11 @@
-module AbcPerformance (  NoteEvent (..)
-                       , MelodyLine
-                       , SingleNote
-                       , ABar
-                       , fromAbc
+module AbcPerformance (  fromAbc
                        , fromAbcResult
+                       , melodyFromAbcResult
                        ) where
 
 {-|  conversion of a ABC Tune parse tree to a performance
 
 # Definition
-
-# Data Types
-@docs NoteEvent, MelodyLine
 
 # Functions
 @docs fromAbc, fromAbcResult
@@ -29,31 +23,12 @@ module AbcPerformance (  NoteEvent (..)
 import Abc.ParseTree exposing (..)
 import Abc exposing (ParseError)
 import Music.Notation exposing (..)
+import Performance exposing (..)
+import Repeats exposing (..)
 import String exposing (fromChar, toUpper)
 import Ratio exposing (Rational, over, fromInt, toFloat, add)
 import Debug exposing (..)
 
-{-| a Note Event (no pitch class implies a rest) -}    
-type alias SingleNote = 
-  { time : NoteTime
-  , pitch : MidiPitch
-  , pc : Maybe PitchClass
-  , accidental : Maybe Accidental
-  }
-
-type NoteEvent =
-     ANote SingleNote Bool    -- Bool indicates whether note is tied
-   | AChord (List SingleNote)
-   
-type alias ABar =
-  {  number : Int             -- sequential from zero
-  ,  repeat : Maybe Repeat    -- the bar owns a repeat of some kind
-  ,  iteration : Maybe Int    -- the bar has an iteration marker  (|1  or |2 etc)
-  ,  accidentals : KeySet     -- any such notes marked explicitly as accidentals (updated in sequence)
-  ,  notes : List NoteEvent   -- the notes in the bar
-  }
-
-type alias MelodyLine = List ABar
 
 type alias TranslationState = 
    { keySignature : KeySignature
@@ -61,6 +36,7 @@ type alias TranslationState =
    , tempoModifier : Float
    , nextBarNumber : Int
    , thisBar : ABar
+   , repeatState : RepeatState
    }
 
 -- default to 1/4=120
@@ -87,12 +63,6 @@ defaultBar i =
   ,  accidentals = []   
   ,  notes = []
   }
-
-{-
-isDefaultBar : ABar -> Bool
-isDefaultBar b =
-  b == defaultBar
--}
 
 isEmptyBar : ABar -> Bool
 isEmptyBar b =
@@ -297,7 +267,8 @@ translateMusic m acc =
 
           nextBar = defaultBar nextBarNumber
           newBar = { nextBar | repeat = b.repeat, iteration = b.iteration }
-          newState =  { state | thisBar = newBar, nextBarNumber = nextBarNumber }
+          repeatState = indexBar newBar state.repeatState
+          newState =  { state | thisBar = newBar, nextBarNumber = nextBarNumber, repeatState = repeatState }
         in
           (newMelody, newState)
       _ -> acc
@@ -321,7 +292,7 @@ reverseMelody =
 {- translate an AbcTune to a more playable melody line
    which is a list of notes (or rests) and their durations
 -}
-fromAbc : AbcTune -> MelodyLine
+fromAbc : AbcTune -> (MelodyLine, Repeats)
 fromAbc tune =   
   let
     -- set a default state for case where there are no tune headers
@@ -330,6 +301,7 @@ fromAbc tune =
                         , tempoModifier = 1.0
                         , nextBarNumber = 0
                         , thisBar = defaultBar 0
+                        , repeatState = defaultRepeatState
                         })
     -- update this from the header state if we have any headers
     headerState = List.foldl updateState defaultState (fst tune)
@@ -347,17 +319,25 @@ fromAbc tune =
    in 
      let
         (music, state) =  List.foldl f headerState (snd tune)
-     -- ensure we don't forget the residual opening bar (still kept in the state) which may yet contain music
-     in 
-       if (isEmptyBar state.thisBar) then
-         reverseMelody music
-       else
-         reverseMelody (state.thisBar :: music)
+        -- ensure we don't forget the residual opening bar (still kept in the state) which may yet contain music
+        fullMusic =
+          if (isEmptyBar state.thisBar) then
+            reverseMelody music
+          else
+            reverseMelody (state.thisBar :: music)
+        repeatState = finalise state.repeatState
+     in
+       (fullMusic, (List.reverse repeatState.repeats))
 
 
-fromAbcResult : Result ParseError AbcTune -> Result ParseError MelodyLine
+fromAbcResult : Result ParseError AbcTune -> Result ParseError (MelodyLine, Repeats)
 fromAbcResult r =
   Result.map fromAbc r
+
+melodyFromAbcResult : Result ParseError AbcTune -> Result ParseError MelodyLine
+melodyFromAbcResult r =
+  Result.map (fromAbc >> fst) r
+  
 
 
 
