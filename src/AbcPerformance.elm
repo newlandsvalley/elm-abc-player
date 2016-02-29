@@ -8,7 +8,9 @@ module AbcPerformance (  fromAbc
 # Definition
 
 # Functions
-@docs fromAbc, fromAbcResult
+@docs fromAbc
+    , fromAbcResult
+    , melodyFromAbcResult
 
 -}
 
@@ -27,6 +29,7 @@ import Performance exposing (..)
 import Repeats exposing (..)
 import String exposing (fromChar, toUpper)
 import Ratio exposing (Rational, over, fromInt, toFloat, add)
+import Maybe exposing (withDefault)
 import Debug exposing (..)
 
 
@@ -159,6 +162,26 @@ addNotesToState ns state =
   in
     { state | thisBar = { thisBar | notes = List.append ns line, accidentals = accidentals }}
 
+{- build a new bar from the bar number and the next ABC bar that we recognise.
+   If the last bar was empty, retain its repeat markings, because otherwise we drop this bar
+-}
+buildNewBar : Int -> Bar -> ABar -> ABar
+buildNewBar nextBarNumber abcBar lastBar =
+  let
+    nextBar = defaultBar nextBarNumber
+  in
+    if (isEmptyBar lastBar) then
+      case (lastBar.repeat, abcBar.repeat) of
+        (Just End, Just Begin) ->
+          log "Just End, Just Begin" { nextBar | repeat = Just BeginAndEnd, iteration = abcBar.iteration }
+        (Just x, _) ->
+           log "Just x" { nextBar | repeat = Just x, iteration = abcBar.iteration }
+        _ ->
+          { nextBar | repeat = abcBar.repeat, iteration = abcBar.iteration }
+    else
+      { nextBar | repeat = abcBar.repeat, iteration = abcBar.iteration }
+
+
 {- translate a sequence of notes as found in chords (parallel) or tuplets (sequential) -}
 translateNoteSequence : Bool -> TranslationState -> List AbcNote -> List NoteEvent
 translateNoteSequence isSeq state notes =
@@ -265,9 +288,18 @@ translateMusic m acc =
             else
                state.nextBarNumber + 1
 
+          {-
           nextBar = defaultBar nextBarNumber
           newBar = { nextBar | repeat = b.repeat, iteration = b.iteration }
-          repeatState = indexBar newBar state.repeatState
+          -}
+          -- build a new Bar from the incoming AbcBar, retaining any unused state from the last bar if it was empty (and hence to be dropped)
+          newBar = buildNewBar nextBarNumber b state.thisBar
+          -- index the last bar if it was not empty   
+          repeatState = 
+            if (isEmptyBar state.thisBar) then
+              state.repeatState
+            else
+              indexBar state.thisBar state.repeatState
           newState =  { state | thisBar = newBar, nextBarNumber = nextBarNumber, repeatState = repeatState }
         in
           (newMelody, newState)
@@ -319,13 +351,14 @@ fromAbc tune =
    in 
      let
         (music, state) =  List.foldl f headerState (snd tune)
-        -- ensure we don't forget the residual opening bar (still kept in the state) which may yet contain music
+        -- ensure we don't forget the residual closing bar (still kept in the state) which may yet contain music
         fullMusic =
           if (isEmptyBar state.thisBar) then
             reverseMelody music
           else
             reverseMelody (state.thisBar :: music)
-        repeatState = finalise state.repeatState
+        -- finalise the repeat state with the last bar
+        repeatState = finalise state.thisBar state.repeatState
      in
        (fullMusic, (List.reverse repeatState.repeats))
 
@@ -337,7 +370,6 @@ fromAbcResult r =
 melodyFromAbcResult : Result ParseError AbcTune -> Result ParseError MelodyLine
 melodyFromAbcResult r =
   Result.map (fromAbc >> fst) r
-  
 
 
 

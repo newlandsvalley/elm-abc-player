@@ -34,6 +34,7 @@ type alias Model =
     , performance : Result String Performance
     , lessonIndex : Int
     , error : Maybe ParseError
+    , buttonsDisabled : Bool
     }
 
 init : String -> (Model, Effects Action)
@@ -45,6 +46,7 @@ init topic =
     ,  performance = Err "not started"
     ,  lessonIndex = 0
     ,  error = Nothing
+    ,  buttonsDisabled = False
     }
   , Effects.none
   )
@@ -53,9 +55,10 @@ init topic =
 
 type Action
     = NoOp   
+    | DisableButtons Bool 
     | LoadFont (Maybe SoundSample)
     | Abc String
-    | Play
+    | Play      -- preparation
     | Move Bool
     | Error ParseError
 
@@ -63,6 +66,8 @@ update : Action -> Model -> (Model, Effects Action)
 update action model =
   case action of
     NoOp -> (model, Effects.none )
+
+    DisableButtons b -> ( { model | buttonsDisabled = b } , Effects.none )
 
     LoadFont mss ->
       case mss of
@@ -81,7 +86,7 @@ update action model =
 
     Abc s ->  ( { model | abc = s }, Effects.none )     
 
-    Play -> ( { model | error = Nothing }, playAbc model)   
+    Play -> ( { model | error = Nothing, buttonsDisabled = True }, playAbc model)   
 
     Move b ->
       let 
@@ -128,7 +133,7 @@ makeSounds ss perfResult =
 playSounds : Sounds -> Effects Action
 playSounds sounds = 
       sequence sounds
-      |> Task.map (\x -> NoOp)
+      |> Task.map (\x -> DisableButtons False)
       |> Effects.task
 
 returnError : ParseError -> Effects Action
@@ -151,7 +156,8 @@ toPerformance ml =
      melody = log "melody" ml
    in
      Result.map (fromMelodyLine 0.0) melody
-     
+
+    
 playAbc : Model -> Effects Action
 playAbc m = 
   let pr = 
@@ -228,10 +234,10 @@ view address model =
          ] ++ highlights model)
          [  ] 
     ,  div
-       [ bStyle ]          
-         [  button [ onClick address (Move False) ] [ text "previous" ]
-         ,  button [ onClick address Play ] [ text "play" ]
-         ,  button [ onClick address (Move True) ] [ text "next" ]
+       [ bStyle  ]          
+         [  button [ onClick address (Move False), disabled model.buttonsDisabled ] [ text "previous" ]
+         ,  button [ onClick address Play, disabled model.buttonsDisabled  ] [ text "play" ]
+         ,  button [ onClick address (Move True), disabled model.buttonsDisabled  ] [ text "next" ]
          ]
     ,  div 
        [ bStyle ] 
@@ -267,10 +273,10 @@ instructionStyle =
 bStyle : Attribute
 bStyle =
   style
-    [
-      ("text-align", "center")
-    , ("margin", "auto") 
-    ]
+     [
+       ("text-align", "center")
+     ,  ("margin", "auto") 
+     ]
 
 highlights : Model -> List Attribute
 highlights model =
@@ -288,8 +294,6 @@ highlights model =
          ]
        else
          []
-
-
 
 -- INPUTS
 

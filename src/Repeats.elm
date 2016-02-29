@@ -48,16 +48,22 @@ type alias RepeatState =
 {- a 'null' section -}
 nullSection : Section
 nullSection =
- { start = Just 0, firstEnding  = Nothing, secondEnding  = Nothing, end = Nothing }
+ { start = Just 0, firstEnding  = Nothing, secondEnding  = Nothing, end = Just 0 }
 
 {- accumulate the last section and start a new section  -}
 startSection : Int -> RepeatState -> RepeatState
+startSection pos r =
+  -- a start implies an end of the last section
+  endAndStartSection pos pos r
+
+{-
 startSection pos r =
   let 
     newState =  accumulateSection r
     newCurrent = { nullSection | start = Just pos }
   in
     { newState | current = newCurrent }
+-}
 
 {- end the section.  If there is a first repeat, keep it open, else accumulate it -}
 endSection : Int -> RepeatState -> RepeatState
@@ -143,10 +149,13 @@ indexBar b r =
        r
 
 {-| accumulate any residual current state -}
-finalise : RepeatState -> RepeatState
-finalise r =
- if (isNullSection r.current) then
-   r
- else
-   accumulateSection r
+finalise : ABar -> RepeatState -> RepeatState
+finalise lastBar r =
+  let
+     newr = indexBar lastBar r
+  in
+    if (isNullSection newr.current) then
+      newr
+    else
+      accumulateSection newr
     
