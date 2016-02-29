@@ -164,6 +164,20 @@ instQuadruplet =
 xmplQuadruplet = 
    "K:Amaj\r\n| (3efg a2 a>b | (3agf e2-e>e | (4f2d2e2c2 | d>f (3f2e2c2 |"
 
+instRepeat =
+   "You can indicate that a section should be repeated by sandwiching it between bars which use the colon as a repeat marker - |: and :|" ++
+   " The initial repeat marker at the first bar is optional."
+
+xmplRepeat =
+  "| C2 D2 E2 C2 :|: E2 F2 G4 :|\r\n|: GAGF E2 C2 :|: C2 G,2 C4 :|"
+
+instRepeatVariants =
+  "In some tunes, the two repeats may differ in their endings.  You can indicate that using |1 and |2 for the two variant endings"
+
+xmplRepeatVariants =
+  "L: 1/16\r\nK:Dmaj\r\n|: A4 a4 a2f2 | gfga b3a g2f2 | e3f g2b2 a2g2 | f3e d2c2 d2B2 |" ++
+  "|1 B2A^G A8 :|2 B2AG F2EF A2A,2 | A,2D2 D8 |"
+
 instTitle =
    "Very many of our previous examples have had no headers - only the melody line.  But, in fact a legitimate ABC tune always" ++
    " requires some headers.  The first is largely irrelevant - a reference number denoted by X.  Any number will do" ++
@@ -179,8 +193,8 @@ instRhythm =
 
 xmplRhythm =
   "X: 1\r\nT: Kapten Lindholms Engelska\r\nR: engelska\r\nM: 4/4\r\nL: 1/8\r\nK:Amaj\r\n" ++
-  "| ed | cAce dcdf | ecAF E2 ed | cABc defg | aece agfe | cAce dcdf | ecAF E2 ed | cABc defg | a2 ag a2 |\r\n" ++
-  "| e2 | aac'e aac'e | bbd'e bbd'e | aac'e aac'e | efed cB A2| fdfa ecea | fdfa ecea |fdfa gegb | baag a2 |\r\n"
+  "|: ed | cAce dcdf | ecAF E2 ed | cABc defg | aece agfe | cAce dcdf | ecAF E2 ed | cABc defg | a2 ag a2 :|\r\n" ++
+  "|: e2 | aac'e aac'e | bbd'e bbd'e | aac'e aac'e | efed cB A2| fdfa ecea | fdfa ecea |fdfa gegb | baag a2 :|\r\n"
 
 instInformation =
   "There are various other headers that you can use to add information about the tune as free text.  The most important are these: " ++
@@ -189,9 +203,23 @@ instInformation =
 xmplInformation =
   "X: 1\r\nT: Gubbdansen\r\nS: from 12 låtar för 2 eller 3 fioler med Gärdebylåten i Hjort Anders Olssons originalsättning\r\n" ++
   "Z: John Batchellor\r\nR: polska\r\nM: 3/4\r\nL: 1/16\r\nK:Dmin\r\n" ++
-  "| f3g f4 a4 | a2ba g2ag f2e2 | d3e f2g2 a2f2 | f3e e2^c2 A4 |\r\n" ++
-  "| ^c2c2 d2d2 e2e2 | f2f2 gfed e4 | ^c2c2 d2d2 e2e2 | f2f2 gfed e4 |\r\n" ++
-  "a4 b2a2 g2f2 | f2ef g2f2 e2d2 | fed^c c4 d4 |\r\n"
+  "|: f3g f4 a4 | a2ba g2ag f2e2 | d3e f2g2 a2f2 | f3e e2^c2 A4 :|\r\n" ++
+  "|: ^c2c2 d2d2 e2e2 | f2f2 gfed e4 | ^c2c2 d2d2 e2e2 | f2f2 gfed e4 |\r\n" ++
+  "a4 b2a2 g2f2 | f2ef g2f2 e2d2 | fed^c c4 d4 :|\r\n"
+
+instChangeKey =
+  "If a tune changes key, you can indicate this simply by placing the K (key) header inside the score at the point where the key changes." ++
+  " In this example, the first part of the tune is in B Minor and the second part in F# Minor" 
+
+xmplChangeKey =
+  "T:Polska från Småland \r\nM:3/4\r\nL:1/16\r\nR:polska\r\nK:Bmin\r\n" ++
+  "|: B4 A4 B4 | d2f2 e2dc c2d2 | B2B2 A2A2 B2B2 |d2f2 e2dc d4 |\r\n" ++
+  "F2GA B2AB c2Bc |d2cd edcB A2F2 | F2GA B2AB c2Bc |d2cd edcB A2F2 |\r\n" ++
+  "F2GA B2c2 d3B | B2A2 B8 :|\r\n" ++
+  "K:F#Min\r\n" ++
+  "|: f4 e4 f4 |g2a2 b2ag g2a2 |f2f2 e2e2 f2f2 |g2a2 b2ag a4 |\r\n" ++
+  "c2de f2ef g2fg |a2ga bagf e2c2 | c2de f2ef g2fg |a2ga bagf e2c2 |\r\n" ++
+  "c2de f2g2 a3f |f2e2 f8 :|\r\n"
 
 
 
@@ -216,9 +244,12 @@ lessons =
   , { title = "triplet", instruction = instTriplet, example = xmplTriplet }
   , { title = "triplet with differing note lengths", instruction = instComplexTriplet, example = xmplComplexTriplet }
   , { title = "quadruplet", instruction = instQuadruplet, example = xmplQuadruplet }
+  , { title = "repeats", instruction = instRepeat, example = xmplRepeat }
+  , { title = "repeats with variant endings", instruction = instRepeatVariants, example = xmplRepeatVariants }
   , { title = "tune title", instruction = instTitle, example = xmplTitle }
   , { title = "rhythm", instruction = instRhythm, example = xmplRhythm }
   , { title = "information headers", instruction = instInformation, example = xmplInformation }
+  , { title = "key changes", instruction = instChangeKey, example = xmplChangeKey }
   ] |> Array.fromList
 
 

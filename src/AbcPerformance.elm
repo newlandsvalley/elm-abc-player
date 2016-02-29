@@ -1,5 +1,6 @@
 module AbcPerformance (  fromAbc
                        , fromAbcResult
+                       , melodyFromAbc
                        , melodyFromAbcResult
                        ) where
 
@@ -10,6 +11,7 @@ module AbcPerformance (  fromAbc
 # Functions
 @docs fromAbc
     , fromAbcResult
+    , melodyFromAbc
     , melodyFromAbcResult
 
 -}
@@ -358,9 +360,19 @@ fromAbc tune =
           else
             reverseMelody (state.thisBar :: music)
         -- finalise the repeat state with the last bar
-        repeatState = finalise state.thisBar state.repeatState
+        repeatState = finalise (log "last bar" state.thisBar) (log "repeat state" state.repeatState)
      in
        (fullMusic, (List.reverse repeatState.repeats))
+
+melodyFromAbc : Bool -> AbcTune -> (MelodyLine, Repeats)
+melodyFromAbc expandRepeats tune =
+  let
+    mr = fromAbc tune
+  in
+    if (expandRepeats) then
+      (buildRepeatedMelody mr, [])
+    else
+      mr
 
 
 fromAbcResult : Result ParseError AbcTune -> Result ParseError (MelodyLine, Repeats)
@@ -369,7 +381,8 @@ fromAbcResult r =
 
 melodyFromAbcResult : Result ParseError AbcTune -> Result ParseError MelodyLine
 melodyFromAbcResult r =
-  Result.map (fromAbc >> fst) r
+  -- Result.map (fromAbc >> fst) r
+  Result.map (fromAbc >> buildRepeatedMelody) r
 
 
 
