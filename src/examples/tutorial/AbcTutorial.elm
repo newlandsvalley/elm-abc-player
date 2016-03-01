@@ -179,7 +179,7 @@ title i =
     mlesson = Array.get i lessons
   in case mlesson of
     Nothing -> "error"
-    Just l -> l.title
+    Just l -> (toString (i+1) ++ " - " ++ l.title)
 
 instruction : Int -> String
 instruction i =
@@ -226,7 +226,7 @@ view address model =
          , value model.abc
          , on "input" targetValue (\a -> Signal.message address (Abc a))
          , taStyle
-         , cols 50
+         , cols 66
          , rows 12
          , autocomplete False
          , spellcheck False
@@ -249,7 +249,7 @@ taStyle =
   style
     [
       ("padding", "10px 0")
-    , ("font-size", "2em")
+    , ("font-size", "1.5em")
     , ("text-align", "left")
     , ("align", "center")
     , ("display", "block")

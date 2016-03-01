@@ -175,7 +175,7 @@ instRepeatVariants =
   "In some tunes, the two repeats may differ in their endings.  You can indicate that using |1 and |2 for the two variant endings"
 
 xmplRepeatVariants =
-  "L: 1/16\r\nK:Dmaj\r\n|: A4 a4 a2f2 | gfga b3a g2f2 | e3f g2b2 a2g2 | f3e d2c2 d2B2 |" ++
+  "L: 1/16\r\nK:Dmaj\r\n|: A4 a4 a2f2 | gfga b3a g2f2 | e3f g2b2 a2g2 | f3e d2c2 d2B2 |\r\n" ++
   "|1 B2A^G A8 :|2 B2AG F2EF A2A,2 | A,2D2 D8 |"
 
 instTitle =
