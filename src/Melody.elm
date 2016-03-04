@@ -1,16 +1,15 @@
-module Performance ( NoteEvent (..)
-                   , MelodyLine
-                   , SingleNote
-                   , ABar
-                   ) where
+module Melody ( NoteEvent (..)
+              , MelodyLine
+              , SingleNote
+              , ABar
+              ) where
 
-{-|  Data structures for describing an ABC performance
+{-|  Data structures for describing an ABC melody  (i.e just a succession of notes and durations)
 
 # Definition
 
 # Data Types
 @docs NoteEvent, MelodyLine, SingleNote, ABar
-
 
 -}
 

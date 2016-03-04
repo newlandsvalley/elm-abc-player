@@ -27,7 +27,7 @@ module AbcPerformance (  fromAbc
 import Abc.ParseTree exposing (..)
 import Abc exposing (ParseError)
 import Music.Notation exposing (..)
-import Performance exposing (..)
+import Melody exposing (..)
 import Repeats exposing (..)
 import String exposing (fromChar, toUpper)
 import Ratio exposing (Rational, over, fromInt, toFloat, add)

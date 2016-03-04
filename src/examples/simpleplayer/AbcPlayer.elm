@@ -14,7 +14,7 @@ import SoundFont exposing (..)
 import Abc exposing (..)
 import Music.Notation exposing (..)
 import AbcPerformance exposing (..)
-import Performance exposing (..)
+import Melody exposing (..)
 import Notable exposing (..)
 
 -- MODEL

@@ -31,7 +31,7 @@ module Repeats ( Section
 
 -}
 
-import Performance exposing (ABar, MelodyLine)
+import Melody exposing (ABar, MelodyLine)
 import Abc.ParseTree exposing (Repeat (..))
 import Maybe.Extra exposing (isJust)
 import List.Extra exposing (takeWhile, dropWhile)
