@@ -246,7 +246,7 @@ view address model =
          value  (instruction model.lessonIndex) 
          , instructionStyle
          , readonly True
-         , cols 100
+         , cols 107
          , rows 5
          ]
          [ ]
@@ -256,8 +256,8 @@ view address model =
          , value model.abc
          , on "input" targetValue (\a -> Signal.message address (Abc a))
          , taStyle
-         , cols 66
-         , rows 12
+         , cols 70
+         , rows 13
          , autocomplete False
          , spellcheck False
          , autofocus True

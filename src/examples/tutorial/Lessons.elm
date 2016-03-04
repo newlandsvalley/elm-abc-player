@@ -241,9 +241,9 @@ xmplChangeKey =
   
 instMixolydian =
   "If you come across a modal tune, rather than marking its key signature as straightforward major or minor,"  ++
-  " you can instead use the mode name.  For example, the following tune is in D Mixolydian.  But remember, the classical" ++
-  " modes all use the standard diatonic scale - they just start at different places along the scale.  So for this tune " ++
-  " the printed score would look, to all intents and purposes, identical to that for G Major or E Minor"
+  " you can instead use the mode name. For example, the following tune is in D Mixolydian.  But remember, the classical" ++
+  " modes all use the standard diatonic scale - they just start at different places along the scale. So for this tune " ++
+  " the printed score would look, to all intents and purposes, identical to that for E Minor. Feel free to use either signature."
 
 xmplMixolydian =
   "X: 1\r\nT: The Yellow Wattle\r\nR: jig\r\nM: 6/8\r\nL: 1/8\r\nK: Dmix\r\n" ++
@@ -251,6 +251,21 @@ xmplMixolydian =
   "dcA AGE|ABA AGE|EDD cde|dcA GED:|\r\n" ++
   "|:DED c3|ded c3|DED cde|dcA GED|\r\n" ++
   "DED c3|ded d2c|ABA ABc|dcA GED:|\r\n"
+
+instKlezmer =
+  "Klezmer and Balkan music tends to use modes that are not diatonic scales - some intervals are more than two semitones." ++
+  " Suppose you have a tune that would be in a 'standard' mode except that one note in the scale is sharpened." ++
+  " You can either use the name of the mode in the key signature and then explicitly sharpen this note each time it occurs in the score" ++
+  " or you can modify the key signature itself, adding as many (sharpened or flattened) accidentals as are needed." ++ 
+  " The following tune is in D Dorian, but with every G sharpened."
+
+xmplKlezmer = 
+  "X: 1\r\nT: Der Badchen Freylach \r\nM: 2/4\r\nL: 1/16\r\nK: Ddor^G\r\n" ++
+  "|: DA,DF GAGF | A2A2 FED2 | DA,DF GAGF | A4 A4- |\r\n" ++
+  "| AA,DF GAFD | A2A2 FED2 | EFGF EDEF | D8 :|\r\n" ++
+  "|: ABcB dcBA | GABc A4 | dcBA GABc | A4 A4 |\r\n" ++
+  "| ABcB dcBA | GABc A4 |1 ABcB AB (3FED | EFD2- D4 |\r\n" ++
+  ":|2 GABA GAFE | D8 :||\r\n"
 
 
 
@@ -283,6 +298,7 @@ lessons =
   , { title = "information headers", instruction = instInformation, example = xmplInformation }
   , { title = "key changes", instruction = instChangeKey, example = xmplChangeKey }
   , { title = "other modes", instruction = instMixolydian, example = xmplMixolydian }
+  , { title = "klezmer", instruction = instKlezmer, example = xmplKlezmer }
   ] |> Array.fromList
 
 

@@ -97,11 +97,11 @@ scale ks =
       m ->
         modalScale target ks.mode
 
-{-| return an accidental if it is implicitly there in the key signature 
+{-| return an accidental if it is implicitly there in the (modified) key signature 
     attached to the pitch class of the note -}
-accidentalImplicitInKey : AbcNote -> KeySignature -> Maybe Accidental
-accidentalImplicitInKey n ksig  =
-    accidentalInKeySet n (keySet ksig)
+accidentalImplicitInKey : AbcNote -> ModifiedKeySignature -> Maybe Accidental
+accidentalImplicitInKey n mks  =
+    accidentalInKeySet n (modifiedKeySet mks)
 
 {-| return an accidental if it is contained in the key set for the pitch class in question
     This is used as an implementation for the accidental checking in key signatures and 
@@ -178,13 +178,13 @@ dotFactor i =
 
 {-| convert an ABC note pitch to a MIDI pitch 
    AbcNote - the note in question
-   KeySignature - the key signature
+   ModifiedKeySignature - the key signature (possibly modified by extra accidentals) 
    KeySet - any notes in this bar which have previously been set explicitly to an accidental which are thus inherited by this note
    MidiPitch - the resulting pitch of the MIDI note
 -}
-toMidiPitch : AbcNote -> KeySignature -> KeySet -> MidiPitch
-toMidiPitch n ks barAccidentals =
-  (n.octave * 12) + midiPitchOffset n ks barAccidentals
+toMidiPitch : AbcNote -> ModifiedKeySignature -> KeySet -> MidiPitch
+toMidiPitch n mks barAccidentals =
+  (n.octave * 12) + midiPitchOffset n mks barAccidentals
 
 {-| translate a tempo and unit note length to a real world note duration -}
 noteDuration : AbcTempo -> Rational -> NoteTime
@@ -389,11 +389,11 @@ isFlatMajorKey target =
       Just a -> (a == Flat)
 
 {- convert an AbcNote (pich class and accidental) to a pitch offset in a chromatic scale -}
-midiPitchOffset : AbcNote -> KeySignature -> KeySet -> Int
-midiPitchOffset n ks barAccidentals =
+midiPitchOffset : AbcNote -> ModifiedKeySignature -> KeySet -> Int
+midiPitchOffset n mks barAccidentals =
   let 
     inBarAccidental = accidentalInKeySet n barAccidentals
-    inKeyAccidental = accidentalImplicitInKey n ks
+    inKeyAccidental = accidentalImplicitInKey n mks
     -- look first for an explicit note accidental, then for an explicit for the same note that occurred earlier in the bar and 
     -- finally look for an implicit accidental attached to this key signature
     maybeAccidental = oneOf [n.accidental, inBarAccidental, inKeyAccidental]

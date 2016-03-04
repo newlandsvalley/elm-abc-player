@@ -36,7 +36,7 @@ import Debug exposing (..)
 
 
 type alias TranslationState = 
-   { keySignature : KeySignature
+   { modifiedKeySignature : ModifiedKeySignature
    , tempo : AbcTempo
    , tempoModifier : Float
    , nextBarNumber : Int
@@ -52,13 +52,16 @@ defaultTempo =
   ,  unitNoteLength = over 1 8
   }
 
--- default to C Major
-defaultKey : KeySignature
+-- default to C Major (i.e. no accidental modifiers)
+defaultKey : ModifiedKeySignature
 defaultKey = 
-  { pitchClass = C
-  , accidental = Nothing
-  , mode = Major
-  } 
+  (
+    { pitchClass = C
+    , accidental = Nothing
+    , mode = Major
+    }
+  , [] 
+  )
   
 defaultBar : Int -> ABar
 defaultBar i = 
@@ -109,8 +112,8 @@ updateState h acc =
       in
        (melody, { state | tempo = { tempo | tempoNoteLength = tnl, bpm = t.bpm }} )
     -- ignore accidental note modifiers in key signatures for the moment - they're little used
-    Key (k, accs) ->
-       (melody, { state | keySignature = k} )
+    Key mk ->
+       (melody, { state | modifiedKeySignature = mk} )
     _ -> acc       
 
 {- we need to take note of any accidentals so far in the bar because these may influence
@@ -193,7 +196,7 @@ translateNoteSequence isSeq state notes =
         duration = (noteDuration state.tempo abc.duration) * state.tempoModifier
         barAccidentals = state.thisBar.accidentals
       in
-        { time = duration, pitch = toMidiPitch abc state.keySignature barAccidentals, pc = Just abc.pitchClass, accidental = abc.accidental}
+        { time = duration, pitch = toMidiPitch abc state.modifiedKeySignature barAccidentals, pc = Just abc.pitchClass, accidental = abc.accidental}
   in
     if isSeq then 
        List.map f notes
@@ -210,8 +213,8 @@ translateNotePair n1 s1 n2 s2  =
     duration2 = (noteDuration s2.tempo n2.duration) * s2.tempoModifier
     -- but we'll just accumulate use accidentals in the first state (which will be identical to the second)
     barAccidentals = s1.thisBar.accidentals
-    note1 = ANote { time = duration1, pitch = toMidiPitch n1 s1.keySignature barAccidentals, pc = Just n1.pitchClass, accidental = n1.accidental} False
-    note2 = ANote { time = duration2, pitch = toMidiPitch n2 s2.keySignature barAccidentals, pc = Just n2.pitchClass, accidental = n2.accidental} False
+    note1 = ANote { time = duration1, pitch = toMidiPitch n1 s1.modifiedKeySignature barAccidentals, pc = Just n1.pitchClass, accidental = n1.accidental} False
+    note2 = ANote { time = duration2, pitch = toMidiPitch n2 s2.modifiedKeySignature barAccidentals, pc = Just n2.pitchClass, accidental = n2.accidental} False
   in
     -- we add them backwards now because we are doing a left fold
     [note2, note1]
@@ -229,7 +232,7 @@ translateMusic m acc =
         let 
           duration = (noteDuration state.tempo abc.duration) * state.tempoModifier
           barAccidentals = state.thisBar.accidentals
-          note = ANote { time = duration, pitch = toMidiPitch abc state.keySignature barAccidentals, pc = Just abc.pitchClass, accidental = abc.accidental} abc.tied
+          note = ANote { time = duration, pitch = toMidiPitch abc state.modifiedKeySignature barAccidentals, pc = Just abc.pitchClass, accidental = abc.accidental} abc.tied
           newState = addNoteToState note state
         in
           (melodyLine, newState)
@@ -330,7 +333,7 @@ fromAbc : AbcTune -> (MelodyLine, Repeats)
 fromAbc tune =   
   let
     -- set a default state for case where there are no tune headers
-    defaultState = ([], { keySignature = defaultKey
+    defaultState = ([], { modifiedKeySignature = defaultKey
                         , tempo = defaultTempo
                         , tempoModifier = 1.0
                         , nextBarNumber = 0
