@@ -45,7 +45,7 @@ instOctaves =
   " Similarly higher octaves can be reached using apostrophes."
 
 xmplOctaves = 
-  "| C, G, C G c g c' |"
+  "| C,, G,, C, G, | C G c g | c' g' c'' |"
 
 instLongNotes =
   "So far, all our notes have had a duration of 1 unit.  You can extend this by placing a whole number" ++
@@ -87,13 +87,15 @@ instKeySig =
    "So far, we have only used the white notes on the piano - i.e. the tune snippets have tended to be in the keys either" ++
    " of C Major or A Minor.  We now introduce our first header - K: for Key Signature.  Headers are placed on lines on their own" ++
    " before the melody.  In this way, we can move the last example from A Minor to A Major. This, of course, has the effect of" ++
-   " sharpening every C,F and G."
+   " sharpening every C,F and G." 
 
 xmplKeySig = 
   "K: AMajor \r\n| A2 Bc dcBc [CEa] |"
 
 instFlatKeySig =
-  "If your key is a major key, you can, if you want, leave out the word 'Major'.  If it is a flat key, you use 'b' and if a sharp key, '#'. "
+  "If your key is a major key, you can, if you want, leave out the word 'Major'.  If it is a flat key, you use 'b' and if a sharp key, '#'. " ++
+  " You can also choose to shorted the mode name to just three letters - in this case, BbMaj."
+  
 
 xmplFlatKeySig = 
    "K: Bb\r\n| BfdB AecA | FdBF D4 |"
@@ -131,6 +133,22 @@ instTempo =
 
 xmplTempo =
   "L: 1/8 \r\nQ: 1/4=60\r\nA B c def"
+  
+instMeter =
+  "The meter is defined with the M: header.  For example, a waltz would normally have the meter 3/4 and a march 4/4." ++
+  " 3/4 means that each complete bar should have a total duration equal to that of three quarter notes." ++
+  " The presence of a meter actually makes little difference to how the tune sounds, but will show up in a score." ++
+  " But it is important to make sure that the duration of each complete bar agrees with the meter you designate." ++
+  " This example is a slip-jig in 9/8"
+
+xmplMeter =
+  "X:1\r\nT:Another jig will do\r\nQ:3/8=120\r\nM:9/8\r\nK:D\r\n" ++
+  "ABA A2G F2G | ABA AGF G2E |\r\n" ++
+  "ABA A2G F2G | A2d d2c d3 |\r\n" ++
+  "A2g f2d e2c | A2B =c2B c2B |\r\n" ++
+  "A2g f2d e2^c | A2d d2c d3 |\r\n" ++
+  "A2g f2d e2c | A2B =c2B c2^c |\r\n" ++
+  "d2A A2G F2G | A2d d2c d3 |\r\n"
 
 instTie = 
   "A tie joins together two notes of the same pitch.  It is indicated by placing a hyphen directly after the first note of the pair." ++
@@ -220,6 +238,19 @@ xmplChangeKey =
   "|: f4 e4 f4 |g2a2 b2ag g2a2 |f2f2 e2e2 f2f2 |g2a2 b2ag a4 |\r\n" ++
   "c2de f2ef g2fg |a2ga bagf e2c2 | c2de f2ef g2fg |a2ga bagf e2c2 |\r\n" ++
   "c2de f2g2 a3f |f2e2 f8 :|\r\n"
+  
+instMixolydian =
+  "If you come across a modal tune, rather than marking its key signature as straightforward major or minor,"  ++
+  " you can instead use the mode name.  For example, the following tune is in D Mixolydian.  But remember, the classical" ++
+  " modes all use the standard diatonic scale - they just start at different places along the scale.  So for this tune " ++
+  " the printed score would look, to all intents and purposes, identical to that for G Major or E Minor"
+
+xmplMixolydian =
+  "X: 1\r\nT: The Yellow Wattle\r\nR: jig\r\nM: 6/8\r\nL: 1/8\r\nK: Dmix\r\n" ++
+  "|:dcA AGE|ABA ABc|dcA ABc|dcA AGE|\r\n" ++
+  "dcA AGE|ABA AGE|EDD cde|dcA GED:|\r\n" ++
+  "|:DED c3|ded c3|DED cde|dcA GED|\r\n" ++
+  "DED c3|ded d2c|ABA ABc|dcA GED:|\r\n"
 
 
 
@@ -240,6 +271,7 @@ lessons =
   , { title = "sharps and flats", instruction = instAccidentals, example = xmplAccidentals }
   , { title = "how long is a unit note?", instruction = instUnitNote, example = xmplUnitNote }
   , { title = "tempo", instruction = instTempo, example = xmplTempo }
+  , { title = "meter", instruction = instMeter, example = xmplMeter }
   , { title = "tie", instruction = instTie, example = xmplTie }
   , { title = "triplet", instruction = instTriplet, example = xmplTriplet }
   , { title = "triplet with differing note lengths", instruction = instComplexTriplet, example = xmplComplexTriplet }
@@ -250,6 +282,7 @@ lessons =
   , { title = "rhythm", instruction = instRhythm, example = xmplRhythm }
   , { title = "information headers", instruction = instInformation, example = xmplInformation }
   , { title = "key changes", instruction = instChangeKey, example = xmplChangeKey }
+  , { title = "other modes", instruction = instMixolydian, example = xmplMixolydian }
   ] |> Array.fromList
 
 

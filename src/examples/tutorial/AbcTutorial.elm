@@ -1,23 +1,20 @@
 module AbcTutorial where
 
-import Effects exposing (Effects, task)
+import Effects exposing (Effects, Never, task)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, targetValue, onClick)
-import Http exposing (..)
-import Task exposing (..)
-import List exposing (..)
-import Maybe exposing (..)
-import String exposing (..)
+import Task exposing (Task, andThen, succeed, sequence)
+import List exposing (reverse)
+import Maybe exposing (Maybe, withDefault)
+import String exposing (toInt)
 import Result exposing (Result, formatError)
 import Array exposing (Array, get)
 import Dict exposing (Dict)
 import SoundFont exposing (..)
 import Abc exposing (..)
-import Music.Notation exposing (..)
-import AbcPerformance exposing (..)
+import AbcPerformance exposing (melodyFromAbcResult)
 import Performance exposing (..)
-import Repeats exposing (..)
 import Notable exposing (..)
 import Lessons exposing (..)
 import Debug exposing (..)
@@ -31,7 +28,6 @@ type alias Model =
     { samples : Dict Int SoundSample
     , loaded : Bool
     , abc : String
-    , performance : Result String Performance
     , lessonIndex : Int
     , error : Maybe ParseError
     , buttonsDisabled : Bool
@@ -43,10 +39,9 @@ init topic =
        samples = Dict.empty
     ,  loaded = False
     ,  abc = example 0
-    ,  performance = Err "not started"
     ,  lessonIndex = 0
     ,  error = Nothing
-    ,  buttonsDisabled = False
+    ,  buttonsDisabled = True -- disabled until the soundfonts load
     }
   , Effects.none
   )
@@ -55,10 +50,10 @@ init topic =
 
 type Action
     = NoOp   
-    | DisableButtons Bool 
     | LoadFont (Maybe SoundSample)
     | Abc String
-    | Play      -- preparation
+    | Play     
+    | ShowButtons -- immediately after play has ended
     | Move Bool
     | Error ParseError
 
@@ -67,7 +62,7 @@ update action model =
   case action of
     NoOp -> (model, Effects.none )
 
-    DisableButtons b -> ( { model | buttonsDisabled = b } , Effects.none )
+    ShowButtons -> ( {model | buttonsDisabled = False } , Effects.none )
 
     LoadFont mss ->
       case mss of
@@ -76,7 +71,7 @@ update action model =
         Just ss -> 
           case ss.name of
             "end" ->
-               ({ model | loaded = True }, Effects.none )
+               ({ model | loaded = True }, showButtonsAction )
             _ -> 
               let pitch = toInt ss.name
               in
@@ -128,28 +123,63 @@ makeSounds ss perfResult =
          List.map (nextSound ss) perf
        Err err ->
          []
-
+ 
 {- play the sounds as a single uninterruptible task -}
-playSounds : Sounds -> Effects Action
-playSounds sounds = 
-      sequence sounds
-      |> Task.map (\x -> DisableButtons False)
-      |> Effects.task
+playSounds : Result ParseError Performance -> Sounds -> Effects Action
+playSounds rp sounds =   
+   playAndSuspend rp sounds
+      |> Task.map (\_ -> ShowButtons)
+      |> Effects.task      
+      
+{- play the sounds and suspend the UI -}      
+playAndSuspend :  Result ParseError Performance -> Sounds -> Task Never Action
+playAndSuspend rp sounds =
+   sequence sounds   
+    `andThen` (\_ -> suspend rp)      
+      
+{- sleep for a number od seconds -}
+suspend : Result ParseError Performance -> Task Never Action
+suspend rp =
+  let
+    time = performanceDuration rp * 1000
+  in 
+    Task.sleep time
+      `andThen` (\_ -> succeed (NoOp))
+    
+{- just the ShowButton action wrapped in a Task -}
+showButtons : Task Never Action
+showButtons = succeed (ShowButtons)            
+
+{- and as an effect -}
+showButtonsAction : Effects Action
+showButtonsAction =
+  showButtons
+  |> Effects.task
+     
+performanceDuration : Result ParseError Performance  -> Float
+performanceDuration rp =
+   let
+      notes = log "performance notes" (Result.withDefault [] rp)
+      maybeLastNote = List.head notes
+   in 
+      case maybeLastNote of
+        Nothing -> log "nothing" 0.0
+        Just ne -> log "Just" (fst ne)  -- the accumulated time
 
 returnError : ParseError -> Effects Action
 returnError e =
   Task.succeed (Error e)
     |> Effects.task
-
+    
 terminateLine : String -> String
 terminateLine s =
-  s ++ "\r\n"
- 
+  s ++ "\r\n" 
 
 {- cast a String to an Int -}
 toInt : String -> Int
 toInt = String.toInt >> Result.toMaybe >> Maybe.withDefault 0
 
+{- note melody is reversed -}
 toPerformance : Result ParseError MelodyLine -> Result ParseError Performance
 toPerformance ml = 
    let 
@@ -169,7 +199,7 @@ playAbc m =
   in case pr of
     Ok _ ->
       makeSounds m.samples pr
-        |> playSounds
+        |> playSounds pr
     Err e ->
       returnError e
 
