@@ -145,20 +145,22 @@ keyAccidentals =
 
 octave : Int -> String
 octave i =
-   if ((i == 4) || (i == 5)) then 
-     ""
-   else if i > 5 then 
-     repeat (i - 5) "'"
-   else
-     repeat (4 - i) ","      
+  let
+     octaveAboveMiddleC = middlecOctave + 1 
+  in
+     if ((i == middlecOctave) || (i == octaveAboveMiddleC)) then 
+       ""
+     else if (i > octaveAboveMiddleC) then 
+       repeat (i - octaveAboveMiddleC) "'"
+     else
+       repeat (middlecOctave - i) ","      
 
 pitch : Int -> PitchClass -> String
 pitch octave p =
-  if (octave >= 5) then
-    toLower (toString p)
-  else
+  if (octave <= middlecOctave) then
     toString p
-   
+  else
+    toLower (toString p)   
 
 abcNote : AbcNote -> String
 abcNote a =
@@ -248,7 +250,7 @@ header h = case h of
    Group s -> "G: " ++ s
    History s -> "H: " ++ s
    Instruction s -> "I: " ++ s
-   Key k kacc -> "K: " ++ (key k) ++ (keyAccidentals kacc)
+   Key (k, kacc) -> "K: " ++ (key k) ++ (keyAccidentals kacc)
    UnitNoteLength d -> "L: " ++ (duration d)
    Meter m -> "M: " ++ (meter m)   
    Macro s -> "m: " ++ s

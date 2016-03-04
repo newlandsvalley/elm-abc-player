@@ -755,9 +755,9 @@ buildKeySignature : String -> Maybe Accidental -> Maybe Mode -> KeySignature
 buildKeySignature pStr ma mm =
   { pitchClass = lookupPitch pStr, accidental = ma, mode = withDefault Major mm }
 
--- build a complete key designation (key signature plus modifyinhg accidentals)
+-- build a complete key designation (key signature plus modifying accidentals)
 buildKey : Char -> KeySignature -> List KeyAccidental -> Header
-buildKey c ks ka = Key ks ka
+buildKey c ks ka = Key (ks, ka)
 
 
 {- build a bar line 
@@ -808,14 +808,14 @@ buildNote macc pitchStr octave ml mt =
      { pitchClass = p, accidental = macc, octave = spn, duration = l, tied = tied }
 
 {- investigate a note/octave pair and return the octave
-   in scientific pitch notation (middle C = 4)
+   in scientific pitch notation relative to MIDI pitches
 -}
 scientificPitchNotation : String -> Int -> Int
 scientificPitchNotation pc oct =
   if (contains (Regex.regex "[A-G]")) pc then  -- pitch class inhabits octave of middle C, oct <= 0
-    4 + oct
+    middlecOctave + oct
   else                                         -- pitch class inhabits octave above middle C, oct >= 0
-    5 + oct
+    middlecOctave + 1 + oct
 
 buildAccidental : String -> Accidental
 buildAccidental s = case s of

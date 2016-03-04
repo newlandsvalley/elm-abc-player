@@ -5,6 +5,7 @@ module Music.Notation
   , AbcTempo
   , NoteTime
   , keySet
+  , modifiedKeySet
   , scale
   , accidentalImplicitInKey
   , dotFactor
@@ -25,12 +26,12 @@ module Music.Notation
 -}
 
 import List.Extra exposing (getAt, splitAt, elemIndex, tails)
-import List exposing (member)
+import List exposing (member, isEmpty)
 import Maybe exposing (withDefault, oneOf)
 import Maybe.Extra exposing (join)
 import String exposing (contains, endsWith, fromChar)
 import Dict exposing (Dict, fromList, get)
-import Abc.ParseTree exposing (Mode (..), Accidental (..), KeySignature, PitchClass (..), AbcNote)
+import Abc.ParseTree exposing (Mode (..), Accidental (..), KeySignature, ModifiedKeySignature, KeyAccidental, PitchClass (..), AbcNote)
 import Ratio exposing (Rational, over, fromInt, toFloat, add)
 
 {-| a complete pitch class (the white note and the accidental) -}
@@ -63,13 +64,26 @@ type alias AbcTempo =
 
 -- EXPORTED FUNCTIONS
     
-{-| return the set of keys (pitch classes) that comprise the key signature -}
+{-| return the set of keys (pitch classes with accidental) that comprise the key signature -}
 keySet : KeySignature -> KeySet
 keySet ks =  
   scale ks
      |> List.filter accidentalKey
 
-{-| return the set of keys (pitche classes) that comprise a complete 11-note scale -}
+{-| return the set of keys (pitch classes with accidental) that comprise a modified key signature -}
+-- not finished
+modifiedKeySet : ModifiedKeySignature -> KeySet
+modifiedKeySet ksm =  
+  let
+    (ksig, mods) = ksm
+    ks = keySet ksig
+  in
+    if (isEmpty mods) then
+      ks
+    else
+      List.foldr modifyKeySet ks mods
+
+{-| return the set of keys (pitch classes) that comprise a complete 11-note scale -}
 scale : KeySignature -> Scale
 scale ks =
   let 
@@ -132,6 +146,20 @@ accidentalInKeySet'' n ks =
       Nothing
  -}
 
+{- modify a key set with a new accidental -}
+modifyKeySet : KeyAccidental -> KeySet -> KeySet
+modifyKeySet target ks =
+  let    
+    -- filter out the given pitch class of the incoming key accidental
+    f key = (fst key /= target.pitchClass)
+    newks = List.filter f ks
+  in
+    -- if it's a natural, just remove any old sharp or flat key from the incoming key accidental
+    if (target.accidental == Natural) then
+      ks
+    else
+    -- otherwise, add the incoming key accidental
+      (target.pitchClass, Just target.accidental) :: ks 
 
 
 {-| the amount by which you increase the duration of a (multiply) dotted note 
