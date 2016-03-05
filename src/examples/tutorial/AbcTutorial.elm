@@ -4,7 +4,7 @@ import Effects exposing (Effects, Never, task)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, targetValue, onClick)
-import Task exposing (Task, andThen, succeed, sequence)
+import Task exposing (Task, andThen, succeed, sequence, onError)
 import List exposing (reverse)
 import Maybe exposing (Maybe, withDefault)
 import String exposing (toInt)
@@ -55,6 +55,7 @@ type Action
     | Play     
     | ShowButtons -- immediately after play has ended
     | Move Bool
+    | MoveToEnd Bool
     | Error ParseError
 
 update : Action -> Model -> (Model, Effects Action)
@@ -92,7 +93,16 @@ update action model =
       in
         ( { model | lessonIndex = next, abc = (example next) }, Effects.none ) 
 
-    Error pe ->  ( { model | error = Just pe }, Effects.none ) 
+    MoveToEnd b ->
+      let 
+        next =
+          case b of 
+            True -> (Array.length lessons - 1)
+            False -> 0 
+      in
+        ( { model | lessonIndex = next, abc = (example next) }, Effects.none ) 
+
+    Error pe ->  ( { model | error = Just pe }, showButtonsAction  ) 
 
 
 {- inspect the next performance event and generate the appropriate sound command 
@@ -128,14 +138,14 @@ makeSounds ss perfResult =
 playSounds : Result ParseError Performance -> Sounds -> Effects Action
 playSounds rp sounds =   
    playAndSuspend rp sounds
-      |> Task.map (\_ -> ShowButtons)
-      |> Effects.task      
+        |> Task.map (\_ -> ShowButtons)
+        |> Effects.task      
       
 {- play the sounds and suspend the UI -}      
 playAndSuspend :  Result ParseError Performance -> Sounds -> Task Never Action
 playAndSuspend rp sounds =
    sequence sounds   
-    `andThen` (\_ -> suspend rp)      
+     `andThen` (\_ -> suspend rp)      
       
 {- sleep for a number od seconds -}
 suspend : Result ParseError Performance -> Task Never Action
@@ -238,41 +248,58 @@ viewError me =
 
 view : Signal.Address Action -> Model -> Html
 view address model =
-  div []
-    [  
-       h1 [ bStyle ] [ text (title model.lessonIndex) ]     
-    ,  textarea 
-         [
-         value  (instruction model.lessonIndex) 
-         , instructionStyle
-         , readonly True
-         , cols 107
-         , rows 5
-         ]
-         [ ]
-    ,  textarea
-         ([ 
-         placeholder "abc"
-         , value model.abc
-         , on "input" targetValue (\a -> Signal.message address (Abc a))
-         , taStyle
-         , cols 70
-         , rows 13
-         , autocomplete False
-         , spellcheck False
-         , autofocus True
-         ] ++ highlights model)
-         [  ] 
-    ,  div
-       [ bStyle  ]          
-         [  button [ onClick address (Move False), disabled model.buttonsDisabled ] [ text "previous" ]
-         ,  button [ onClick address Play, disabled model.buttonsDisabled  ] [ text "play" ]
-         ,  button [ onClick address (Move True), disabled model.buttonsDisabled  ] [ text "next" ]
-         ]
-    ,  div 
-       [ bStyle ] 
-         [ p [] [ text (viewError model.error) ] ]
-    ]
+    div []
+      [  
+         h1 [ centreStyle ] [ text (title model.lessonIndex) ]     
+      ,  textarea 
+           [
+           value  (instruction model.lessonIndex) 
+           , instructionStyle
+           , readonly True
+           , cols 107
+           , rows 5
+           ]
+           [ ]
+      ,  textarea
+           ([ 
+           placeholder "abc"
+           , value model.abc
+           , on "input" targetValue (\a -> Signal.message address (Abc a))
+           , taStyle
+           , cols 70
+           , rows 13
+           , autocomplete False
+           , spellcheck False
+           , autofocus True
+           ] ++ highlights model)
+           [  ] 
+      ,  div
+         [ centreStyle ]       
+           [  button [ bStyle model.buttonsDisabled
+                     , onClick address (MoveToEnd False)
+                     , disabled model.buttonsDisabled 
+                     ] [ text "first" ]
+           ,  button [ bStyle model.buttonsDisabled
+                     , onClick address (Move False)
+                     , disabled model.buttonsDisabled 
+                     ] [ text "previous" ]
+           ,  button [ bStyle model.buttonsDisabled
+                     , onClick address Play
+                     , disabled model.buttonsDisabled  
+                     ] [ text "play" ]
+           ,  button [ bStyle model.buttonsDisabled
+                     , onClick address (Move True)
+                     , disabled model.buttonsDisabled  
+                     ] [ text "next" ] 
+           ,  button [ bStyle model.buttonsDisabled
+                     , onClick address (MoveToEnd True)
+                     , disabled model.buttonsDisabled 
+                     ] [ text "last" ]
+           ]
+      ,  div 
+         [ centreStyle ] 
+           [ p [] [ text (viewError model.error) ] ]
+      ]
 
 taStyle : Attribute
 taStyle =
@@ -300,13 +327,63 @@ instructionStyle =
     , ("margin-right", "auto")
     ]
     
-bStyle : Attribute
-bStyle =
+centreStyle : Attribute
+centreStyle =
   style
      [
        ("text-align", "center")
      ,  ("margin", "auto") 
      ]
+
+
+bStyle : Bool -> Attribute
+bStyle disabled = 
+  let
+    basecss =
+      [
+        ("border-top", "1px solid #97d9f7")
+      , ("padding", "5px 10px")
+      , ("-webkit-border-radius", "8px")
+      , ("-moz-border-radius", "8px")
+      , ("border-radius", "8px")
+      , ("-webkit-box-shadow", "rgba(0,0,0,1) 0 1px 0")
+      , ("-moz-box-shadow", "rgba(0,0,0,1) 0 1px 0")
+      , ("box-shadow", "rgba(0,0,0,1) 0 1px 0")
+      , ("text-shadow", "rgba(0,0,0,.4) 0 1px 0")
+      , ("font-size", "14px")
+      , ("font-family", "Georgia, serif")
+      , ("text-decoration", "none")
+      , ("vertical-align", "middle") 
+      , ("margin", "10px 5px 10px 5px")
+     ]
+    colour =
+      if disabled then
+        [ ("background-color", "#7D7C7C")
+        , ("color", "grey")
+        ]
+      else
+        [ ("background-color", "#67d665")
+        , ("background", "-webkit-gradient(linear, left top, left bottom, from(#3e9c5f), to(#67d665))")
+        , ("background", "-webkit-linear-gradient(top, #3e9c5f, #67d665)")
+        , ("background", "-moz-linear-gradient(top, #3e9c5f, #67d665)")
+        , ("background", "-ms-linear-gradient(top, #3e9c5f, #67d665)")
+        , ("background", "-o-linear-gradient(top, #3e9c5f, #67d665)")
+        , ("color", "black")
+        ]
+  in
+    style (basecss ++ colour)
+   
+{-
+.button:hover {
+   border-top-color: #287831;
+   background: #287831;
+   color: #ccc;
+   }
+.button:active {
+   border-top-color: #1b5c2f;
+   background: #1b5c2f;
+   }
+-}
 
 highlights : Model -> List Attribute
 highlights model =
