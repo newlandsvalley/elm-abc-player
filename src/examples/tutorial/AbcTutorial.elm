@@ -91,7 +91,9 @@ update action model =
             True -> Basics.min (model.lessonIndex + 1) (Array.length lessons - 1)
             False -> Basics.max (model.lessonIndex - 1) 0 
       in
-        ( { model | lessonIndex = next, abc = (example next) }, Effects.none ) 
+        ( { model | lessonIndex = next
+          , abc = (example next) 
+          , error = Nothing }, Effects.none ) 
 
     MoveToEnd b ->
       let 
@@ -100,7 +102,9 @@ update action model =
             True -> (Array.length lessons - 1)
             False -> 0 
       in
-        ( { model | lessonIndex = next, abc = (example next) }, Effects.none ) 
+        ( { model | lessonIndex = next
+          , abc = (example next)
+          , error = Nothing }, Effects.none ) 
 
     Error pe ->  ( { model | error = Just pe }, showButtonsAction  ) 
 
@@ -236,6 +240,14 @@ example i =
   in case mlesson of
     Nothing -> "error"
     Just l -> l.example
+
+hint : Int -> String
+hint i =
+  let 
+    mlesson = Array.get i lessons
+  in case mlesson of
+    Nothing -> ""
+    Just l -> l.hint
        
 
 -- VIEW
@@ -298,7 +310,9 @@ view address model =
            ]
       ,  div 
          [ centreStyle ] 
-           [ p [] [ text (viewError model.error) ] ]
+           [ p [] [ text (hint model.lessonIndex) ] 
+           , p [] [ text (viewError model.error) ] 
+           ]
       ]
 
 taStyle : Attribute

@@ -167,7 +167,7 @@ chord = Chord <$> abcChord
 
 inline : Parser Music
 inline = Inline <$> 
-           between (char '[') (char ']') tuneBodyInfo
+           between (char '[') (char ']') (tuneBodyInfo True)
                  <?> "inline header"
 
 graceNote : Parser Music
@@ -353,8 +353,9 @@ history : Parser Header
 history = History <$> ((headerCode 'H') *> strToEol)
                <?> "H header"
 
-instruction : Parser Header
-instruction = Instruction <$> ((headerCode 'I') *> inlineInfo )
+instruction : Bool -> Parser Header
+instruction isInline = 
+   Instruction <$> ((headerCode 'I') *> (inlineInfo isInline))
                <?> "I header"
 
 key : Parser Header
@@ -369,63 +370,74 @@ meter : Parser Header
 meter = Meter <$> ((headerCode 'M') *> meterDefinition  )
                <?> "M header"
 
-macro : Parser Header
-macro = Macro <$> ((headerCode 'm') *> inlineInfo)
+macro : Bool -> Parser Header
+macro isInline
+   = Macro <$> ((headerCode 'm') *> (inlineInfo isInline))
                <?> "m header"
 
-notes : Parser Header
-notes = Notes <$> ((headerCode 'N') *> inlineInfo)
+notes : Bool -> Parser Header
+notes isInline = 
+  Notes <$> ((headerCode 'N') *> (inlineInfo isInline))
                <?> "N header"
 
 origin : Parser Header
 origin = Origin <$> ((headerCode 'O') *> strToEol)
                <?> "O header"
 
-parts : Parser Header
-parts = Parts <$> ((headerCode 'P') *> inlineInfo)
+parts : Bool -> Parser Header
+parts isInline = 
+  Parts <$> ((headerCode 'P') *> (inlineInfo isInline))
                <?> "P header"
 
 tempo : Parser Header
 tempo = Tempo <$> ((headerCode 'Q') *> tempoSignature)
                <?> "Q header"
 
-rhythm : Parser Header
-rhythm = Rhythm <$> ((headerCode 'R') *> inlineInfo)
+rhythm : Bool -> Parser Header
+rhythm isInline = 
+   Rhythm <$> ((headerCode 'R') *> (inlineInfo isInline))
                <?> "R header"
 
-remark : Parser Header
-remark = Remark <$> ((headerCode 'r') *> inlineInfo)
+remark : Bool -> Parser Header
+remark isInline = 
+  Remark <$> ((headerCode 'r') *> (inlineInfo isInline))
                <?> "r header"
 
 source : Parser Header
 source = Source <$> ((headerCode 'S') *> strToEol)
                <?> "S header"
 
-symbolLine : Parser Header
-symbolLine = SymbolLine <$> ((headerCode 's') *> inlineInfo)
+symbolLine : Bool -> Parser Header
+symbolLine isInline = 
+  SymbolLine <$> ((headerCode 's') *> (inlineInfo isInline))
                <?> "s header"
 
-title : Parser Header
-title = Title <$> ((headerCode 'T') *> inlineInfo)
+title : Bool -> Parser Header
+title isInline =
+  Title <$> ((headerCode 'T') *> (inlineInfo isInline))
                <?> "T header"
 
-userDefined : Parser Header
-userDefined = UserDefined <$> ((headerCode 'U') *> inlineInfo)
+userDefined : Bool -> Parser Header
+userDefined isInline
+  = UserDefined <$> ((headerCode 'U') *> (inlineInfo isInline))
                <?> "U header"
 
-voice : Parser Header
-voice = Voice <$> ((headerCode 'V') *> inlineInfo)
+voice : Bool -> Parser Header
+voice isInline
+  = Voice <$> ((headerCode 'V') *> (inlineInfo isInline))
                <?> "V header"
 
-wordsAfter : Parser Header
-wordsAfter  = WordsAfter  <$> ((headerCode 'W') *> inlineInfo)
+wordsAfter : Bool -> Parser Header
+wordsAfter isInline =
+  WordsAfter <$> ((headerCode 'W') *> (inlineInfo isInline))
                <?> "W header"
 
-wordsAligned : Parser Header
-wordsAligned  = WordsAligned  <$> ((headerCode 'w') *> inlineInfo)
+wordsAligned :  Bool -> Parser Header
+wordsAligned  isInline =
+   WordsAligned  <$> ((headerCode 'w') *> (inlineInfo isInline))
                <?> "w header"
 
-referenceNumber : Parser Header
+referenceNumber :  Parser Header
 referenceNumber = ReferenceNumber <$> ((headerCode 'X') *> int)
                <?> "x header"
 
@@ -440,7 +452,7 @@ fieldContinuation = FieldContinuation <$> ((headerCode '+') *> strToEol)
 
 {- a header is an information field up to and including the end of line marker -}
 header : Parser Header
-header = informationField <* eol
+header = informationField False <* eol
 
 {- unsupported header reserved for future use -}
 unsupportedHeader : Parser Header
@@ -449,19 +461,37 @@ unsupportedHeader = UnsupportedHeader <$ unsupportedHeaderCode <* strToEol
 
 {- ditto for headers that may appear in the tune body -}
 tuneBodyHeader : Parser BodyPart
-tuneBodyHeader  = BodyInfo <$> tuneBodyInfo <* eol
+tuneBodyHeader  = BodyInfo <$> tuneBodyInfo True <* eol
                     <?> "tune body header"
 
-{- whereas information fields can be used inline -}
-informationField : Parser Header
-informationField = 
+{- Headers/Information fields.  These can be used in three different ways:
+    1) As a normal tune header
+    2) As an 'inline' header inside the tune body on a separate line
+    3) Embedded inside a tune score between '[' and ']'
+
+  Only a named subset of headers can be used inline in this way.
+
+  One subtlety is therefore that header information that accepts simple text content
+  should not be allowed to incorporate '[' or ']' because of the potential ambiguity.
+  Thus, headers functions are given a paraneter 'inline' which is the inline context
+  simply allowing 'normal' headers to accept these values in text content but to allow
+  inline headers to reject them.
+-}
+
+{- whereas information fields can be used inline 
+  isInline - is this information field being used in an in-line context
+  (as opposed to being used in a conventional header)
+-}
+informationField : Bool -> Parser Header
+informationField isInline = 
   log "header" <$>
     (
-    choice [ anywhereInfo
+    choice [ anywhereInfo isInline
            , tuneInfo ]
              <?> "header"
     )
-           
+ 
+{- these can only be used in 'normal' headers -}          
 tuneInfo : Parser Header
 tuneInfo = 
   choice [ area 
@@ -479,40 +509,40 @@ tuneInfo =
          ]
            <?> "tune info"
 
-anywhereInfo : Parser Header
-anywhereInfo = 
-  choice [ instruction 
+anywhereInfo : Bool -> Parser Header
+anywhereInfo isInline = 
+  choice [ instruction isInline
          , key 
          , unitNoteLength 
          , meter
-         , macro 
-         , notes 
-         , parts
+         , macro isInline
+         , notes isInline
+         , parts isInline
          , tempo 
-         , rhythm
-         , remark 
-         , title
-         , userDefined
-         , voice
-         , wordsAfter
+         , rhythm isInline
+         , remark isInline
+         , title isInline
+         , userDefined isInline
+         , voice isInline
+         , wordsAfter isInline
          , fieldContinuation
          , comment
          ]
             <?> "anywhere info"
 
-tuneBodyOnlyInfo : Parser Header
-tuneBodyOnlyInfo = 
-  choice [ symbolLine 
-         , wordsAligned ] 
+tuneBodyOnlyInfo : Bool -> Parser Header
+tuneBodyOnlyInfo isInline  = 
+  choice [ symbolLine isInline 
+         , wordsAligned isInline ] 
            <?> "tune body only info"
 
-tuneBodyInfo : Parser Header
-tuneBodyInfo = 
-  choice [ tuneBodyOnlyInfo
-         , anywhereInfo ] 
+tuneBodyInfo : Bool -> Parser Header
+tuneBodyInfo isInline = 
+  choice [ tuneBodyOnlyInfo isInline
+         , anywhereInfo isInline ] 
            <?> "tune body info"
 
-{- relax the spec in the pasring of headers to allow body-only tunes -}
+{- relax the spec in the parsing of headers to allow body-only tunes -}
 headers : Parser TuneHeaders
 headers = many header <?> "headers"
 -- headers = many1 header <?> "headers"
@@ -601,10 +631,19 @@ strToEol = regex "[^\r\n]*"
 
 {- parse an information item String - note that, because these can be used inline
    (bracketed by '[' and ']') it behoves us not to use the framing characters in the string
+   when the header is used inline (but not when used in a normal header)
    not that the spec has anything to say about it as far as I can see
 -}
-inlineInfo : Parser String
-inlineInfo = regex "[^\r\n\\[\\]]*"
+inlineInfo : Bool -> Parser String
+inlineInfo isInline = 
+  let
+    pattern =
+      if isInline then
+        "[^\r\n\\[\\]]*"
+      else
+        "[^\r\n]*"
+  in
+    regex pattern
 
 note : Parser Music
 note = Note <$> abcNote

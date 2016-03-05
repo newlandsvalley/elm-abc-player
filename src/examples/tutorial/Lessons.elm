@@ -22,6 +22,7 @@ type alias Lesson =
   { title : String
   , instruction : String
   , example : String
+  , hint : String
   }
 
 instNotes = 
@@ -32,6 +33,9 @@ instNotes =
 xmplNotes = 
   "A B c def"
 
+hintNotes =
+  "Try altering some of the notes."
+
 instBarsAndRests = 
   "Use the characters Z or z to represent rests and a vertical bar to introduce a bar line." ++
   " Spread out into multiple lines if you like."
@@ -39,6 +43,9 @@ instBarsAndRests =
 xmplBarsAndRests =
   "| ABc z z def |\r\n" ++
   "| g z z z a |"
+
+hintBarsAndRests =
+  "Try adding another bar which contains both notes and rests."
 
 instOctaves =
   "You can reach octaves below middle C by adding one (or more) commas immediately after the note." ++
@@ -53,6 +60,9 @@ instLongNotes =
 
 xmplLongNotes =
   "| F G A B c4 g2 b2 c'4 |"
+
+hintLongNotes =
+  "Try making some of these notes even longer."
 
 instShortNotes =
   "You can shorten a note by placing a fraction after the note.  This could be, for example," ++
@@ -69,6 +79,9 @@ instHornpipe =
 
 xmplHornpipe =
   "| C>GE>G C>GE>G | c>de>d c>BA>G |"
+
+hintHornpipe =
+  "If you know it, can you finish off the 'A' part of the tune?"
 
 instStrathspey =
   "Conversely, you can shorten the first note of a pair and lengthen the second by means of the < character." ++
@@ -206,8 +219,9 @@ xmplTitle =
   "X:1\r\nT:Camptown Races\r\nM:4/4\r\nL:1/8\r\nK:D\r\n|AAFA|BAF2|FE2z|FE2z|AAFA|BAF2|E2FE|D2-D2|\r\n|D>DFA|d4|B>BdB|A3F|\r\nAA F/2F/2 A/2A/2|BAF2|EF/2-G/2FE|D4 |\r\n"
 
 instRhythm =
-  "You can use the R (rhythm) header to indicate the type of tune (jig, reel, polska etc.). In most ABC collections, this field is optional" ++
-  " However, tradtunedb requires it to be present so that you can search easily for tunes of the same type" 
+  "You can use the R (rhythm) header to indicate the type of tune (jig, reel, polska etc.). In most ABC collections, this field is optional." ++
+  " However, if you want to save your tune to tradtunedb, it requires a rhythm header to be present so that you can search" ++
+  " easily for tunes of the same type" 
 
 xmplRhythm =
   "X: 1\r\nT: Kapten Lindholms Engelska\r\nR: engelska\r\nM: 4/4\r\nL: 1/8\r\nK:Amaj\r\n" ++
@@ -253,7 +267,7 @@ xmplMixolydian =
   "DED c3|ded d2c|ABA ABc|dcA GED:|\r\n"
 
 instKlezmer =
-  "Klezmer and Balkan music tends to use modes that are not diatonic scales - some intervals are more than two semitones." ++
+  "Klezmer tends to use modes that are not diatonic scales - some intervals are more than two semitones." ++
   " Suppose you have a tune that would be in a 'standard' mode except that one note in the scale is sharpened." ++
   " You can either use the name of the mode in the key signature and then explicitly sharpen this note each time it occurs in the score" ++
   " or you can modify the key signature itself, adding as many (sharpened or flattened) accidentals as are needed." ++ 
@@ -267,38 +281,50 @@ xmplKlezmer =
   "| ABcB dcBA | GABc A4 |1 ABcB AB (3FED | EFD2- D4 |\r\n" ++
   ":|2 GABA GAFE | D8 :||\r\n"
 
+instBalkan =
+ "Balkan music also tends to have unusual modes and time signatures.  This tune is in A Minor with a sharpened G; the meter is 11/16." ++
+ " The '~' symbol indicates a particulat decoration - a roll - but this player does not attempt it."
+
+xmplBalkan =
+  "X: 1\r\nT: Acano mlada nevesto\r\nO: Macedonia\r\nS: R.B.Iverson\r\nM: 11/16\r\nL: 1/16\r\nK: AMin^G\r\n" ++
+  "|: E3  e2e2 d2c2 | ~B2A ~A2GA B2-B2 :: A2A dccB BAAG |\r\n" ++
+  "| G2F ~F2EF ~G2FE | A2A dccB BAAG | ~G2F ~FGFE E2E2 :|\r\n" ++
+  "|: EFD EFGA BcBA | Bcd cBcA BEeE |\r\n" ++
+  "|  EFD EFGA BcBA | GAB AGFE E2-E2 :|\r\n"
+
 
 
 lessons : Array Lesson 
 lessons =
   [
-    { title = "the notes", instruction = instNotes, example = xmplNotes }
-  , { title = "bars and rests", instruction = instBarsAndRests, example = xmplBarsAndRests }
-  , { title = "octaves", instruction = instOctaves, example = xmplOctaves }
-  , { title = "long notes", instruction = instLongNotes, example = xmplLongNotes }
-  , { title = "short notes", instruction = instShortNotes, example = xmplShortNotes }
-  , { title = "hornpipes", instruction = instHornpipe, example = xmplHornpipe }
-  , { title = "strathspeys", instruction = instStrathspey, example = xmplStrathspey }
-  , { title = "chords", instruction = instChords, example = xmplChords }
-  , { title = "key signature", instruction = instKeySig, example = xmplKeySig }
-  , { title = "sharp and flat key signatures", instruction = instFlatKeySig, example = xmplFlatKeySig }
-  , { title = "naturals", instruction = instNaturals, example = xmplNaturals }
-  , { title = "sharps and flats", instruction = instAccidentals, example = xmplAccidentals }
-  , { title = "how long is a unit note?", instruction = instUnitNote, example = xmplUnitNote }
-  , { title = "tempo", instruction = instTempo, example = xmplTempo }
-  , { title = "meter", instruction = instMeter, example = xmplMeter }
-  , { title = "tie", instruction = instTie, example = xmplTie }
-  , { title = "triplet", instruction = instTriplet, example = xmplTriplet }
-  , { title = "triplet with differing note lengths", instruction = instComplexTriplet, example = xmplComplexTriplet }
-  , { title = "quadruplet", instruction = instQuadruplet, example = xmplQuadruplet }
-  , { title = "repeats", instruction = instRepeat, example = xmplRepeat }
-  , { title = "repeats with variant endings", instruction = instRepeatVariants, example = xmplRepeatVariants }
-  , { title = "tune title", instruction = instTitle, example = xmplTitle }
-  , { title = "rhythm", instruction = instRhythm, example = xmplRhythm }
-  , { title = "information headers", instruction = instInformation, example = xmplInformation }
-  , { title = "key changes", instruction = instChangeKey, example = xmplChangeKey }
-  , { title = "other modes", instruction = instMixolydian, example = xmplMixolydian }
-  , { title = "klezmer", instruction = instKlezmer, example = xmplKlezmer }
+    { title = "the notes", instruction = instNotes, example = xmplNotes, hint = hintNotes }
+  , { title = "bars and rests", instruction = instBarsAndRests, example = xmplBarsAndRests, hint = hintBarsAndRests }
+  , { title = "octaves", instruction = instOctaves, example = xmplOctaves, hint = "" }
+  , { title = "long notes", instruction = instLongNotes, example = xmplLongNotes, hint = hintLongNotes }
+  , { title = "short notes", instruction = instShortNotes, example = xmplShortNotes, hint = "" }
+  , { title = "hornpipes", instruction = instHornpipe, example = xmplHornpipe, hint = hintHornpipe }
+  , { title = "strathspeys", instruction = instStrathspey, example = xmplStrathspey, hint = "" }
+  , { title = "chords", instruction = instChords, example = xmplChords, hint = "" }
+  , { title = "key signature", instruction = instKeySig, example = xmplKeySig, hint = "" }
+  , { title = "sharp and flat key signatures", instruction = instFlatKeySig, example = xmplFlatKeySig, hint = "" }
+  , { title = "naturals", instruction = instNaturals, example = xmplNaturals, hint = "" }
+  , { title = "sharps and flats", instruction = instAccidentals, example = xmplAccidentals, hint = "" }
+  , { title = "how long is a unit note?", instruction = instUnitNote, example = xmplUnitNote, hint = "" }
+  , { title = "tempo", instruction = instTempo, example = xmplTempo, hint = "" }
+  , { title = "meter", instruction = instMeter, example = xmplMeter, hint = "" }
+  , { title = "tie", instruction = instTie, example = xmplTie, hint = "" }
+  , { title = "triplet", instruction = instTriplet, example = xmplTriplet, hint = "" }
+  , { title = "triplet with differing note lengths", instruction = instComplexTriplet, example = xmplComplexTriplet, hint = "" }
+  , { title = "quadruplet", instruction = instQuadruplet, example = xmplQuadruplet, hint = "" }
+  , { title = "repeats", instruction = instRepeat, example = xmplRepeat, hint = "" }
+  , { title = "repeats with variant endings", instruction = instRepeatVariants, example = xmplRepeatVariants, hint = "" }
+  , { title = "tune title", instruction = instTitle, example = xmplTitle, hint = "" }
+  , { title = "rhythm", instruction = instRhythm, example = xmplRhythm, hint = "" }
+  , { title = "information headers", instruction = instInformation, example = xmplInformation, hint = "" }
+  , { title = "key changes", instruction = instChangeKey, example = xmplChangeKey, hint = "" }
+  , { title = "other modes", instruction = instMixolydian, example = xmplMixolydian, hint = "" }
+  , { title = "klezmer", instruction = instKlezmer, example = xmplKlezmer, hint = "" }
+  , { title = "Balkan", instruction = instBalkan, example = xmplBalkan, hint = "" }
   ] |> Array.fromList
 
 
