@@ -37,8 +37,8 @@ hintNotes =
   "Try altering some of the notes."
 
 instBarsAndRests = 
-  "Use the characters Z or z to represent rests and a vertical bar to introduce a bar line." ++
-  " Spread out into multiple lines if you like."
+  "Use the character z to represent a rest.  You can set the length of a rest in exactly the same manner as for a note - by adding a number after it" ++
+  " - for example z4. Use a vertical bar to introduce a bar line. You can spread out into multiple lines if you like."
 
 xmplBarsAndRests =
   "| ABc z z def |\r\n" ++

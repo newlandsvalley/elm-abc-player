@@ -274,7 +274,7 @@ view address model =
            [ ]
       ,  fieldset [ fieldsetStyle ]
            [
-             legend [ legendStyle ] [ text "you can edit the text inside the box" ]
+             legend [ legendStyle ] [ text "you can edit the text inside the box and then hit play" ]
            , textarea
                ([ 
                placeholder "abc"
