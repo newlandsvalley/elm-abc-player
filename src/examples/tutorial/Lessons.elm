@@ -133,14 +133,14 @@ xmplAccidentals =
 instUnitNote =
    "You may have noticed when we first introduced notes that we talked about their duration in 'units'.  But how long is a unit?" ++
    " So far, we have used the convention that it represents an eighth note (a quaver).  In other words, in a score, this is how" ++
-   " The note would look.  We can change the unit to be a sixteenth note (a semiquaver) if we use the L: (unit note length) header" ++
+   " The note would look.  We can change the unit to be a sixteenth note (a semiquaver) if we use the L (unit note length) header" ++
    " This will have the effect of doubling the speed."
 
 xmplUnitNote =
  "L: 1/16 \r\nA B c def"
 
 instTempo =
-   "An accurate tempo is defined by means of the Q: (tempo) header.  Up till now, we've used a default where we have 120 quarter notes per minute" ++
+   "An accurate tempo is defined by means of the Q (tempo) header.  Up till now, we've used a default where we have 120 quarter notes per minute" ++
    " i.e 1/4=120.  We can, for example, slow down our tune firstly by reverting to a unit note length of 1/8 and secondly by explicitly reducing the " ++
    " tempo with the Q header."
 
@@ -148,7 +148,7 @@ xmplTempo =
   "L: 1/8 \r\nQ: 1/4=60\r\nA B c def"
   
 instMeter =
-  "The meter is defined with the M: header.  For example, a waltz would normally have the meter 3/4 and a march 4/4." ++
+  "The meter is defined with the M header.  For example, a waltz would normally have the meter 3/4 and a march 4/4." ++
   " 3/4 means that each complete bar should have a total duration equal to that of three quarter notes." ++
   " The presence of a meter actually makes little difference to how the tune sounds, but will show up in a score." ++
   " But it is important to make sure that the duration of each complete bar agrees with the meter you designate." ++
@@ -190,7 +190,7 @@ xmplComplexTriplet =
 instQuadruplet = 
    "Quadruplets are used if you want to play four notes in the time usually taken by three." ++
    " In a similar fashion to triplets, introduce four notes of the same length placed together" ++
-   " with the symbol (4. This example comntains triplets, a tie and a quadruplet."
+   " with the symbol (4. This example contains triplets, a tie and a quadruplet."
 
 xmplQuadruplet = 
    "K:Amaj\r\n| (3efg a2 a>b | (3agf e2-e>e | (4f2d2e2c2 | d>f (3f2e2c2 |"
@@ -241,7 +241,8 @@ xmplInformation =
 
 instChangeKey =
   "If a tune changes key, you can indicate this simply by placing the K (key) header inside the score at the point where the key changes." ++
-  " In this example, the first part of the tune is in B Minor and the second part in F# Minor" 
+  " In this example, the first part of the tune is in B Minor and the second part in F# Minor." ++
+  " Various other headers can be used within the score in this way - in particular, the M (meter) and L (unit note length) headers."
 
 xmplChangeKey =
   "T:Polska från Småland \r\nM:3/4\r\nL:1/16\r\nR:polska\r\nK:Bmin\r\n" ++
@@ -283,7 +284,7 @@ xmplKlezmer =
 
 instBalkan =
  "Balkan music also tends to have unusual modes and time signatures.  This tune is in A Minor with a sharpened G; the meter is 11/16." ++
- " The '~' symbol indicates a particulat decoration - a roll - but this player does not attempt it."
+ " The '~' symbol indicates a particular decoration - a roll - but this player does not attempt it."
 
 xmplBalkan =
   "X: 1\r\nT: Acano mlada nevesto\r\nO: Macedonia\r\nS: R.B.Iverson\r\nM: 11/16\r\nL: 1/16\r\nK: AMin^G\r\n" ++

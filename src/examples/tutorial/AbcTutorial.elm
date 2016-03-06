@@ -260,31 +260,35 @@ viewError me =
 
 view : Signal.Address Action -> Model -> Html
 view address model =
-    div []
+    div [ centreStyle ]
       [  
-         h1 [ centreStyle ] [ text (title model.lessonIndex) ]     
+         h1 [ ] [ text (title model.lessonIndex) ]     
       ,  textarea 
            [
            value  (instruction model.lessonIndex) 
            , instructionStyle
            , readonly True
-           , cols 107
-           , rows 5
+           , cols 96
+           , rows 6
            ]
            [ ]
-      ,  textarea
-           ([ 
-           placeholder "abc"
-           , value model.abc
-           , on "input" targetValue (\a -> Signal.message address (Abc a))
-           , taStyle
-           , cols 70
-           , rows 13
-           , autocomplete False
-           , spellcheck False
-           , autofocus True
-           ] ++ highlights model)
-           [  ] 
+      ,  fieldset [ fieldsetStyle ]
+           [
+             legend [ legendStyle ] [ text "you can edit the text inside the box" ]
+           , textarea
+               ([ 
+               placeholder "abc"
+               , value model.abc
+               , on "input" targetValue (\a -> Signal.message address (Abc a))
+               , taStyle
+               , cols 70
+               , rows 13
+               , autocomplete False
+               , spellcheck False
+               , autofocus True
+               ] ++ highlights model)
+               [  ] 
+           ]
       ,  div
          [ centreStyle ]       
            [  button [ bStyle model.buttonsDisabled
@@ -315,6 +319,7 @@ view address model =
            ]
       ]
 
+{- style a textarea -}
 taStyle : Attribute
 taStyle =
   style
@@ -328,6 +333,8 @@ taStyle =
     , ("margin-right", "auto")
     ]
 
+
+{- style the instructions section -}
 instructionStyle : Attribute
 instructionStyle =
   style
@@ -339,8 +346,11 @@ instructionStyle =
     , ("display", "block")
     , ("margin-left", "auto")
     , ("margin-right", "auto")
+    , ("font", "100% \"Trebuchet MS\", Verdana, sans-serif")
     ]
-    
+
+
+{- style a centered component -}    
 centreStyle : Attribute
 centreStyle =
   style
@@ -350,6 +360,7 @@ centreStyle =
      ]
 
 
+{- style a button -}
 bStyle : Bool -> Attribute
 bStyle disabled = 
   let
@@ -369,6 +380,7 @@ bStyle disabled =
       , ("text-decoration", "none")
       , ("vertical-align", "middle") 
       , ("margin", "10px 5px 10px 5px")
+      , ("font", "100% \"Trebuchet MS\", Verdana, sans-serif")
      ]
     colour =
       if disabled then
@@ -386,7 +398,44 @@ bStyle disabled =
         ]
   in
     style (basecss ++ colour)
-   
+
+
+{- style a fieldset -}
+fieldsetStyle : Attribute
+fieldsetStyle =
+  style 
+    [
+      ("background-color",  "#f1f1f1")
+    , ("border", "none")
+    , ("border-radius", "2px")
+    , ("margin-bottom", "12px")
+    , ("padding", "10px 10px 20px 10px")
+    , ("display", "inline-block")
+    ]
+
+{- style a fieldset legend -}
+legendStyle : Attribute
+legendStyle = 
+  style
+   [
+     ("background-color",  "#67d665") 
+   , ("border-top", "1px solid #d4d4d4")
+   , ("border-bottom", "1px solid #d4d4d4")
+   , ("-moz-box-shadow", "3px 3px 3px #ccc")
+   , ("-webkit-box-shadow", "3px 3px 3px #ccc")
+   , ("box-shadow", "3px 3px 3px #ccc")
+   , ("font-size", "1em")
+   , ("padding", "0.3em 1em")
+   ]
+
+{-
+   , ("border", "1px solid #eaeaea")
+   , ("list-style", "none")
+   , ("margin",  "12px")
+   , ("padding", "12px")
+-}
+
+  
 {-
 .button:hover {
    border-top-color: #287831;
