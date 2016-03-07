@@ -196,6 +196,7 @@ translateNoteSequence isSeq state notes maybeChordDur =
       case maybeChordDur of
         Nothing -> fromInt 1
         Just chordDur -> chordDur
+    -- _ = log "ABCPerformance chord dur" chordDuration
     f abc = 
       let 
         duration = 

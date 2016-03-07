@@ -205,7 +205,10 @@ noteDuration t n =
 {-| find a real world duration of a note in a chord by translating an ABC note duration together with a chord duration using a tempo and unit note length -}
 chordalNoteDuration : AbcTempo -> Rational -> Rational -> NoteTime
 chordalNoteDuration t note chord = 
-   (60.0 * (Ratio.toFloat t.unitNoteLength)* (Ratio.toFloat note) * (Ratio.toFloat chord)) / 
+ let
+   _ = log "chordal abc dur" chord
+ in
+   log "chord dur answer" (60.0 * (Ratio.toFloat t.unitNoteLength)* (Ratio.toFloat note) * (Ratio.toFloat chord)) / 
     ((Ratio.toFloat t.tempoNoteLength) * (Basics.toFloat t.bpm))
 
 -- implementation

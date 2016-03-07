@@ -31,7 +31,7 @@ Elm.Native.SoundFont.make = function (localRuntime) {
      * @returns {String} the Soundfont data url
      */
      values.nameToUrl = function(name) {
-       return 'assets/soundfonts/' + name + '-ogg.js';
+       return 'soundfonts/' + name + '-ogg.js';
      }
 
     /*

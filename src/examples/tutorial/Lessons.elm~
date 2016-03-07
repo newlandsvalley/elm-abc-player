@@ -317,7 +317,7 @@ lessons =
   , { title = "short notes", instruction = instShortNotes, example = xmplShortNotes, hint = hintShortNotes }
   , { title = "hornpipes", instruction = instHornpipe, example = xmplHornpipe, hint = hintHornpipe }
   , { title = "strathspeys", instruction = instStrathspey, example = xmplStrathspey, hint = "" }
-  , { title = "chords", instruction = instChords, example = xmplChords, hint = hintChords }
+  , { title = "chords", instruction = instChords, example = xmplChords, hint = "" }
   , { title = "key signature", instruction = instKeySig, example = xmplKeySig, hint = "" }
   , { title = "sharp and flat key signatures", instruction = instFlatKeySig, example = xmplFlatKeySig, hint = "" }
   , { title = "naturals", instruction = instNaturals, example = xmplNaturals, hint = "" }

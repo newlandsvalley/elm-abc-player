@@ -77,7 +77,7 @@ fromBar b acc =
 fromMelodyLine : AccumulatedTime -> MelodyLine -> Performance
 fromMelodyLine t m = 
   let
-    (t, mtie, p) =  List.foldl fromBar (0.025, Nothing, []) m
+    (t, mtie, p) =  List.foldl fromBar (0.0, Nothing, []) m
   in
     p
 
