@@ -2,7 +2,10 @@ deprecated
 elm-stuff
 elm.js
 Main.html
+index.html
+abc-player.js
 compilep.sh
 compilet.sh
+compiletjs.sh
 /deprecated/
 /src/test/

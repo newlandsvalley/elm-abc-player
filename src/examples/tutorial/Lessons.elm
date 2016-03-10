@@ -100,7 +100,7 @@ xmplStrathspey =
 instChords = 
    "You can play a chord by placing a group of notes, beamed together, inside square brackets - for example [CEa]." ++
    " To set the duration of the chord, you can either annotate each note separately or else annotate the entire chord." ++
-   " If you do both, the effect is additive"
+   " If you do both, the durations are multiplied together"
 
 xmplChords = 
   "| A2 Bc dcBc | [CEa] GB [BGD]3 BG |"
