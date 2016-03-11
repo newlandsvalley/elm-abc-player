@@ -13,14 +13,25 @@ Elm.Native.SoundFont.make = function (localRuntime) {
     var values = {};
     values.soundfontSignal = NS.constant(Maybe.Nothing);
 
-    values.context = new (window.AudioContext || window.webkitAudioContext)();
-
+    /* is the browser web-audio enabled? */
+    values.isWebAudioEnabled = function() {
+      if (values.getAudioContext) {
+        return true
+      }
+      else {
+        return false
+      }
+    }
+   
+    /* Get the audio context */
+    values.getAudioContext = function() {
+      return new (window.AudioContext || window.webkitAudioContext)();
+    };
    
     /* Get the current time from the audio context */
-    values.getCurrentTime = function() {
-      return values.context.currentTime;
+    values.getCurrentTime = function(context) {
+      return context.currentTime;
     };
-
 
     /*
      * nameToUrl
@@ -75,12 +86,13 @@ Elm.Native.SoundFont.make = function (localRuntime) {
     }
 
     /*
+     * @param {Context} context - The Audio Context
      * @param {String} name - The bank name
      * @param {Object} data - The Soundfont instrument data as JSON
      */
-    function createBank(name, data) {
-      console.log("createBank");
-      var bank = { ctx: values.context, name: name, data: data };
+    function createBank(context, name, data) {
+      console.log("createBank in context: ", context);
+      var bank = { ctx: context, name: name, data: data };
       bank.buffers = {};
 
       return bank;
@@ -136,20 +148,21 @@ Elm.Native.SoundFont.make = function (localRuntime) {
      * Given an implicit Web Audio context and a instrument name
      * load the instrument data and generate a signal of sound sample audio buffers
      *
+     * @param {Context} context - the Audio Context
      * @param {String} name - the soundfont instrument name
      */
  
-    values.loadSoundFont = function(name) {
+    values.loadSoundFont = F2(function(context, name) {
       var promise = Promise.resolve(name)
         .then(values.nameToUrl)
         .then(values.loadData)
         .then(values.dataToJson)
         .then(function(jsonData) {
-          return createBank(name, jsonData)
+          return createBank(context, name, jsonData)
         })
         .then(decodeBank); 
        return values.soundfontSignal;
-    }
+    });
 
  
     function b64ToUint6 (nChr) {
@@ -255,22 +268,22 @@ Elm.Native.SoundFont.make = function (localRuntime) {
 /* END OF PARSE NOTE */
  
     /* play an audio buffer at the supplied time offet and with appropriate volume (gain) */
-    values.play = F3(function (buffer, time, gain) {
+    values.play = F4(function (context, buffer, time, gain) {
         console.log("buffer to play: " + buffer + " time: " + time + " with gain: " + gain)
             return Task.asyncFunction(function (callback) {
-                playSound(buffer, time, gain)
+                playSound(context, buffer, time, gain)
                 callback(Task.succeed(Utils.Tuple0));
             });
         });
 
-    function playSound(buffer, time, gain) { 
+    function playSound(context, buffer, time, gain) { 
       // console.log("playing buffer at time: " + time + " with gain: " + gain)
-      var source = values.context.createBufferSource(); 
-      var gainNode = values.context.createGain();
+      var source = context.createBufferSource(); 
+      var gainNode = context.createGain();
       gainNode.gain.value = gain;
       source.buffer = buffer;
       source.connect(gainNode);
-      gainNode.connect(values.context.destination)
+      gainNode.connect(context.destination)
       source.start(time);
     }
 

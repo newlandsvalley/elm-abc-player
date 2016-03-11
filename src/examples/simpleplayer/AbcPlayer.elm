@@ -24,15 +24,17 @@ type alias Sounds = List Sound
 type alias Model =
     { samples : Dict Int SoundSample
     , loaded : Bool
+    , maybeContext : Maybe AudioContext
     , performance : Result String Performance
     }
 
 init : String -> (Model, Effects Action)
 init topic =
   ( { 
-      samples = Dict.empty, 
-      loaded = False, 
-      performance = Err "not started"
+      samples = Dict.empty
+    , loaded = False
+    , maybeContext = Nothing
+    , performance = Err "not started"
     }
   , Effects.none
   )
@@ -57,7 +59,7 @@ update action model =
         Just ss -> 
           case ss.name of
             "end" ->
-               ({ model | loaded = True }, loadAbc "abc/lillasystern.abc" )
+               ( finaliseAudioContext model, loadAbc "abc/lillasystern.abc" )
                -- ({ model | loaded = True }, loadAbc "abc/tie.abc" )
                -- ({ model | loaded = True }, loadAbc "abc/justnotes.abc" )
             _ -> 
@@ -69,9 +71,19 @@ update action model =
 
     Abc result ->  ( { model | performance = result }, Effects.none ) 
 
-    Play -> (model, playSounds <| makeSounds model.samples model.performance)   
+    Play -> (model, playSounds <| makeSounds model.maybeContext model.samples model.performance)   
 
-
+{- finalise the audio context in the model -}
+finaliseAudioContext : Model -> Model
+finaliseAudioContext m =
+  let
+    ctx = 
+      if (isWebAudioEnabled) then
+        Just getAudioContext
+      else
+        Nothing
+  in
+    { m | maybeContext = ctx, loaded = True }
    
 mToList : Maybe (List a) -> List a
 mToList m = case m of
@@ -99,8 +111,8 @@ loadAbc url =
 {- inspect the next performance event and generate the appropriate sound command 
    which is done by looking up the sound fonts.  
 -}
-nextSound : Dict Int SoundSample -> (Float, Notable) -> Sound
-nextSound samples ne = 
+nextSound : AudioContext -> Dict Int SoundSample -> (Float, Notable) -> Sound
+nextSound ctx samples ne = 
   let 
     (time, notable) = ne
   in
@@ -111,17 +123,21 @@ nextSound samples ne =
           sample = Dict.get pitch samples
           soundBite = { mss = sample, time = time, gain = velocity }
         in
-          maybePlay soundBite
+          maybePlay ctx soundBite
            
 
 {- make the sounds - if we have a performance result from parsing the midi file, convert
    the performance into a list of soundbites (aka Sounds)
 -}
-makeSounds :  Dict Int SoundSample -> Result String Performance -> Sounds 
-makeSounds ss perfResult = 
+makeSounds :  Maybe AudioContext -> Dict Int SoundSample -> Result String Performance -> Sounds 
+makeSounds mctx ss perfResult = 
      case perfResult of
        Ok perf ->
-         List.map (nextSound ss) perf
+         case mctx of
+           Just ctx ->
+             List.map (nextSound ctx ss) perf
+           _ ->
+             []
        Err err ->
          []
 
@@ -181,13 +197,16 @@ view address model =
     ]
 
 -- INPUTS
-
 -- try to load the entire piano soundfont
 pianoFonts : Signal (Maybe SoundSample)
-pianoFonts = loadSoundFont  "acoustic_grand_piano"
+pianoFonts = loadSoundFont getAudioContext "acoustic_grand_piano"
 
 signals : List (Signal Action)
-signals = [Signal.map LoadFont pianoFonts]
+signals = 
+  if (isWebAudioEnabled) then 
+    [Signal.map LoadFont pianoFonts]
+  else
+    []
 
 
 
