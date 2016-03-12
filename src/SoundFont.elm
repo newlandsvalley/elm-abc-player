@@ -45,11 +45,11 @@ type alias SoundBite =
 
 {-| is the browser web-audio enabled ? -}
 isWebAudioEnabled : Bool
-isWebAudioEnabled = Native.SoundFont.isWebAudioEnabled
+isWebAudioEnabled = Native.SoundFont.isWebAudioEnabled()
 
 {-| Get the audio context -}
-getAudioContext : AudioContext 
-getAudioContext = Native.SoundFont.getAudioContext()
+getAudioContext : () -> AudioContext 
+getAudioContext = (\_ -> Native.SoundFont.getAudioContext())
 
 {-| Load an Audio Buffer Sound Sample from a URL -}
 loadSoundFont: AudioContext -> String -> Signal (Maybe SoundSample)

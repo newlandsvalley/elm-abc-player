@@ -12,22 +12,34 @@ Elm.Native.SoundFont.make = function (localRuntime) {
 
     var values = {};
     values.soundfontSignal = NS.constant(Maybe.Nothing);
+   
 
     /* is the browser web-audio enabled? */
     values.isWebAudioEnabled = function() {
-      if (values.getAudioContext) {
-        return true
+      try {
+        console.log("Is web-audio enabled ?");
+        var webAudio = new (window.AudioContext || window.webkitAudioContext);
+        if (webAudio) {
+          console.log("yes");
+          return true;
+        }
+        else {
+          console.log("no");
+          return false;
+        }
       }
-      else {
-        return false
+      catch(err) {
+          console.log("no after excception");
+          return false;
       }
-    }
-   
+    }   
+
     /* Get the audio context */
     values.getAudioContext = function() {
-      return new (window.AudioContext || window.webkitAudioContext)();
+        console.log("get Audio Context");
+        return new (window.AudioContext || window.webkitAudioContext)();
     };
-   
+
     /* Get the current time from the audio context */
     values.getCurrentTime = function(context) {
       return context.currentTime;
@@ -42,7 +54,7 @@ Elm.Native.SoundFont.make = function (localRuntime) {
      * @returns {String} the Soundfont data url
      */
      values.nameToUrl = function(name) {
-       return 'assets/soundfonts/' + name + '-ogg.js';
+       return 'assets/soundfonts/' + name + '-mp3.js';
      }
 
     /*
@@ -78,7 +90,6 @@ Elm.Native.SoundFont.make = function (localRuntime) {
      * @returns {JSON} the parsed data as JSON object
      */
     values.dataToJson = function(data) {
-      console.log("dataToJson");
       var begin = data.indexOf("MIDI.Soundfont.");
       begin = data.indexOf('=', begin) + 2;
       var end = data.lastIndexOf(',');
@@ -91,7 +102,7 @@ Elm.Native.SoundFont.make = function (localRuntime) {
      * @param {Object} data - The Soundfont instrument data as JSON
      */
     function createBank(context, name, data) {
-      console.log("createBank in context: ", context);
+      /* console.log("createBank in context: ", context); */
       var bank = { ctx: context, name: name, data: data };
       bank.buffers = {};
 
@@ -110,14 +121,14 @@ Elm.Native.SoundFont.make = function (localRuntime) {
          .then(function(buffer) {          
            note = parseNote(note); 
            noteName = (note.midi).toString();
-           console.log("decodeBank note: ", note.name);
+           /* console.log("decodeBank note: ", note.name); */
            localRuntime.notify(values.soundfontSignal.id, Maybe.Just(values.createAudioBuffer(noteName, buffer)));
         });
       });
 
       return Promise.all(promises).then(function() { 
         localRuntime.notify(values.soundfontSignal.id, Maybe.Just(values.createAudioBuffer("end", null)));
-        console.log("returning after all decodeBank promises");
+        /* console.log("returning after all decodeBank promises"); */
       })
     } 
 
