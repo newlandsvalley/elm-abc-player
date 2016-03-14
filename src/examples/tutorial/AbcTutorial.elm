@@ -250,7 +250,7 @@ title i =
     mlesson = Array.get i lessons
   in case mlesson of
     Nothing -> "error"
-    Just l -> (toString (i+1) ++ " - " ++ l.title)
+    Just l -> "lesson " ++ (toString (i+1) ++ " - " ++ l.title)
 
 instruction : Int -> String
 instruction i =
@@ -290,7 +290,8 @@ view address model =
   if (isWebAudioEnabled) then
     div [ centreStyle ]
       [  
-         h1 [ ] [ text (title model.lessonIndex) ]     
+         h1 [ ] [ text "ABC Tutorial" ]   
+      ,  h2 [ ] [ text (title model.lessonIndex) ]     
       ,  textarea 
            [
            value  (instruction model.lessonIndex) 
@@ -310,7 +311,7 @@ view address model =
                , on "input" targetValue (\a -> Signal.message address (Abc a))
                , taStyle
                , cols 70
-               , rows 13
+               , rows 12
                , autocomplete False
                , spellcheck False
                , autofocus True
@@ -412,7 +413,7 @@ bStyle disabled =
       , ("font-family", "Georgia, serif")
       , ("text-decoration", "none")
       , ("vertical-align", "middle") 
-      , ("margin", "10px 5px 10px 5px")
+      , ("margin", "5px 5px 5px 5px")
       , ("font", "100% \"Trebuchet MS\", Verdana, sans-serif")
      ]
     colour =
