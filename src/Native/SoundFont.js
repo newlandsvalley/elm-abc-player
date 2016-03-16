@@ -34,6 +34,19 @@ Elm.Native.SoundFont.make = function (localRuntime) {
       }
     }   
 
+    /* can the browser play ogg format? */
+    values.canPlayOgg = function() {
+      var audioTester = document.createElement("audio");
+      if (audioTester.canPlayType('audio/ogg')) {
+        console.log("browser supports ogg");
+        return true;
+      }
+      else {
+        console.log("browser does not support ogg");
+        return false;
+      }
+    }
+
     /* Get the audio context */
     values.getAudioContext = function() {
         console.log("get Audio Context");
@@ -49,12 +62,18 @@ Elm.Native.SoundFont.make = function (localRuntime) {
      * nameToUrl
      * Given an instrument name returns a URL to its Soundfont js file
      * (we only use acoustic grand piano at the moment)
+     * load ogg format by preference if browser supports it
      *
      * @param {String} name - instrument name
      * @returns {String} the Soundfont data url
      */
      values.nameToUrl = function(name) {
-       return 'assets/soundfonts/' + name + '-mp3.js';
+       if (values.canPlayOgg()) {
+         return 'assets/soundfonts/' + name + '-ogg.js';
+       }
+       else {
+         return 'assets/soundfonts/' + name + '-mp3.js';
+       }
      }
 
     /*

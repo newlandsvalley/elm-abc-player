@@ -79,7 +79,7 @@ finaliseAudioContext m =
   let
     ctx = 
       if (isWebAudioEnabled) then
-        Just getAudioContext
+        Just (getAudioContext ())
       else
         Nothing
   in
@@ -199,7 +199,7 @@ view address model =
 -- INPUTS
 -- try to load the entire piano soundfont
 pianoFonts : Signal (Maybe SoundSample)
-pianoFonts = loadSoundFont getAudioContext "acoustic_grand_piano"
+pianoFonts = loadSoundFont (getAudioContext ()) "acoustic_grand_piano"
 
 signals : List (Signal Action)
 signals = 
