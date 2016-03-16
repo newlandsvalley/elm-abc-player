@@ -43,10 +43,16 @@ manyTill' p end =
             -- where this implementation differs from the standard
             -- `manyTill`, we return `p`'s error rather than `end`'s.
             (Err ms, ecx) ->
+                (Err ms, ecx)
+
+{-
               let 
                 mcx = log "original ctx" origcx
               in
                 (Err (log "mt' msg" ms), (log "mt' ctx" ecx))
+-}
+
+
   in
     primitive <| accumulate []
 
@@ -68,11 +74,15 @@ leftBiasedOr lp rp =
           (Ok _, _) ->
             res'
 
-          (Err rm, rcx) ->
+          (Err rm, rcx) ->   
+            (Err (lm ++ rm), lcx)
+
+{-
              let 
                mcx = log "original or ctx" cx
              in
                -- preserve lcx rather than cx
                (Err (lm ++ rm), log "left" lcx)
+-}
 
 

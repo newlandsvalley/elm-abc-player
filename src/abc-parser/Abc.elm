@@ -22,7 +22,7 @@ import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
 import Combine.Num exposing (..)
 import Combine.Extra exposing (manyTill', leftBiasedOr)
-import Ratio exposing (Rational, over, fromInt)
+import Ratio exposing (Rational, over, fromInt, divide)
 import String exposing (fromList, toList, foldl)
 import Char exposing (fromCode, toCode, isUpper)
 import Debug exposing (..)
@@ -57,7 +57,7 @@ score = Score <$> manyTill' scoreItem eol
           
 scoreItem : Parser Music
 scoreItem = rec <| \() -> 
-    log "score item" <$>
+    -- log "score item" <$>
     (
     choice 
        [ 
@@ -204,8 +204,13 @@ rational : Parser Rational
 rational = Ratio.over <$> int <* char '/' <*> int
 
 -- e.g. /4 (as found in note durations)
-curtailedRational : Parser Rational
-curtailedRational = Ratio.over 1 <$> (char '/' *> int)
+curtailedLeftRational : Parser Rational
+curtailedLeftRational = Ratio.over 1 <$> (char '/' *> int)
+
+
+-- e.g. 3/ (as found in note durations)
+curtailedRightRational : Parser Rational
+curtailedRightRational = invert <$> (Ratio.over 2 <$> (int <* char '/'))
 
 {- e.g. / or // or /// (as found in note durations)
    which translates to 1/2, 1/4, 1/8 etc
@@ -213,6 +218,7 @@ curtailedRational = Ratio.over 1 <$> (char '/' *> int)
 slashesRational : Parser Rational
 slashesRational = 
    buildRationalFromExponential <$> (List.length <$> (many1 <| char '/'))
+
 
 
 -- HEADER ATTRIBUTES
@@ -484,7 +490,7 @@ tuneBodyHeader  = BodyInfo <$> tuneBodyInfo True <* eol
 -}
 informationField : Bool -> Parser Header
 informationField isInline = 
-  log "header" <$>
+  -- log "header" <$>
     (
     choice [ anywhereInfo isInline
            , tuneInfo ]
@@ -706,14 +712,17 @@ octaveShift s =
   in
     (fst octs - snd octs)
 
-{- the duration of a note in the body -}
+{- the duration of a note in the body
+   order of choices here is important to remove ambiguity
+ -}
 noteDur : Parser Rational
 noteDur = 
    choice 
-    [ rational                -- must come before integral as rational
-    , integralAsRational
-    , curtailedRational
-    , slashesRational
+    [ rational                -- e.g. 3/2
+    , curtailedRightRational  -- e.g. 3/
+    , integralAsRational      -- e.g. 3
+    , curtailedLeftRational   -- e.g. /2
+    , slashesRational         -- e.g. / or //
     ]
 
 {- now attached to leading note and not free-standing -}
@@ -746,6 +755,15 @@ tup = join <$> maybe
         (char ':' *> maybe (regex "[2-9]"))
 
 -- builders
+
+{- invert a Rational -}
+invert : Rational -> Rational
+invert r =
+  let
+    unit = fromInt 1
+  in 
+    divide unit r
+    
 
 -- build a rationalal quantity - "x/y" -> Rational x y
 {-
