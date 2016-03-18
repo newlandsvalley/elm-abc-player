@@ -357,6 +357,7 @@ taStyle =
     , ("display", "block")
     , ("margin-left", "auto")
     , ("margin-right", "auto")
+    , ("background-color",  "#f3f6c6")
     ]
 
 
@@ -400,11 +401,10 @@ bStyle disabled =
   let
     basecss =
       [
-        ("border-top", "1px solid #97d9f7")
+        ("border", "none")
       , ("padding", "5px 10px")
       , ("-webkit-border-radius", "8px")
       , ("-moz-border-radius", "8px")
-      , ("border-radius", "8px")
       , ("-webkit-box-shadow", "rgba(0,0,0,1) 0 1px 0")
       , ("-moz-box-shadow", "rgba(0,0,0,1) 0 1px 0")
       , ("box-shadow", "rgba(0,0,0,1) 0 1px 0")
@@ -415,6 +415,9 @@ bStyle disabled =
       , ("vertical-align", "middle") 
       , ("margin", "5px 5px 5px 5px")
       , ("font", "100% \"Trebuchet MS\", Verdana, sans-serif")
+      , ("-webkit-transition-duration", "0.2s")
+      , ("-moz-transition-duration", "0.2s")
+      , ("transition-duration", "0.2s")
      ]
     colour =
       if disabled then
