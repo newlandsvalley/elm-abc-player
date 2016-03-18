@@ -4,6 +4,7 @@ import Effects exposing (Effects, Never, task)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, targetValue, onClick)
+import DynamicStyle exposing (hover)
 import Task exposing (Task, andThen, succeed, sequence, onError)
 import List exposing (reverse)
 import Maybe exposing (Maybe, withDefault)
@@ -320,26 +321,17 @@ view address model =
            ]
       ,  div
          [ centreStyle ]       
-           [  button [ bStyle model.buttonsDisabled
-                     , onClick address (MoveToEnd False)
-                     , disabled model.buttonsDisabled 
-                     ] [ text "first" ]
-           ,  button [ bStyle model.buttonsDisabled
-                     , onClick address (Move False)
-                     , disabled model.buttonsDisabled 
-                     ] [ text "previous" ]
-           ,  button [ bStyle model.buttonsDisabled
-                     , onClick address Play
-                     , disabled model.buttonsDisabled  
-                     ] [ text "play" ]
-           ,  button [ bStyle model.buttonsDisabled
-                     , onClick address (Move True)
-                     , disabled model.buttonsDisabled  
-                     ] [ text "next" ] 
-           ,  button [ bStyle model.buttonsDisabled
-                     , onClick address (MoveToEnd True)
-                     , disabled model.buttonsDisabled 
-                     ] [ text "last" ]
+           [  
+              button ( buttonAttributes model.buttonsDisabled address (MoveToEnd False))
+                       [ text "first" ]
+           ,  button ( buttonAttributes model.buttonsDisabled address (Move False))
+                       [ text "previous" ]
+           ,  button ( buttonAttributes model.buttonsDisabled address Play)
+                       [ text "play" ]
+           ,  button ( buttonAttributes model.buttonsDisabled address (Move True))
+                       [ text "next" ]
+           ,  button ( buttonAttributes model.buttonsDisabled address (MoveToEnd True))
+                       [ text "last" ]
            ]
       ,  div 
          [ centreStyle ] 
@@ -393,6 +385,14 @@ centreStyle =
      ,  ("margin", "auto") 
      ]
 
+{- gather together all the button attributes -}
+buttonAttributes : Bool -> Signal.Address Action -> Action -> List Attribute
+buttonAttributes isDisabled address action =
+  hoverButton isDisabled ++
+    [ bStyle isDisabled
+    , onClick address action
+    , disabled isDisabled 
+    ] 
 
 {- style a button -}
 bStyle : Bool -> Attribute
@@ -429,10 +429,17 @@ bStyle disabled =
         , ("background", "-ms-linear-gradient(top, #3e9c5f, #67d665)")
         , ("background", "-o-linear-gradient(top, #3e9c5f, #67d665)")
         , ("color", "black")
-        ]
+        ]  
   in
     style (basecss ++ colour)
 
+{- hover over a button -}
+hoverButton : Bool -> List Attribute
+hoverButton disabled =      
+  if disabled then
+    []
+  else
+    hover [("background-color","#67d665","#669966")]
 
 {- style a fieldset -}
 fieldsetStyle : Attribute
@@ -461,26 +468,6 @@ legendStyle =
    , ("font-size", "1em")
    , ("padding", "0.3em 1em")
    ]
-
-{-
-   , ("border", "1px solid #eaeaea")
-   , ("list-style", "none")
-   , ("margin",  "12px")
-   , ("padding", "12px")
--}
-
-  
-{-
-.button:hover {
-   border-top-color: #287831;
-   background: #287831;
-   color: #ccc;
-   }
-.button:active {
-   border-top-color: #1b5c2f;
-   background: #1b5c2f;
-   }
--}
 
 highlights : Model -> List Attribute
 highlights model =

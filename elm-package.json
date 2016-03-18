@@ -20,6 +20,7 @@
         "evancz/elm-http": "3.0.0 <= v < 4.0.0",
         "evancz/elm-html": "4.0.2 <= v < 5.0.0",
         "evancz/start-app": "2.0.2 <= v < 3.0.0",
+        "garetht/elm-dynamic-style": "1.0.3 <= v < 2.0.0",
         "imeckler/ratio": "2.0.0 <= v < 3.0.0",
         "circuithub/elm-maybe-extra": "1.6.0 <= v < 2.0.0",
         "circuithub/elm-list-extra": "3.9.0 <= v < 4.0.0",
