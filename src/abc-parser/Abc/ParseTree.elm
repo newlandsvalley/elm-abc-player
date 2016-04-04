@@ -91,7 +91,6 @@ type alias AbcNote =
 {-| a Chord -}
 type alias AbcChord = 
   { notes : List AbcNote
-  , accidental : Maybe Accidental
   , duration : NoteDuration
   }
 

@@ -4,14 +4,22 @@ module Music.Notation
   , MidiPitch
   , AbcTempo
   , NoteTime
+  , notesInChromaticScale
   , keySet
   , modifiedKeySet
+  , getKeySet
+  , getKeySig
   , scale
+  , isCOrSharpKey
   , accidentalImplicitInKey
+  , accidentalInKeySet
+  , naturaliseIfInKeySet
+  , sharpenFlatEnharmonic
   , dotFactor
   , toMidiPitch
   , noteDuration
   , chordalNoteDuration
+  , transposeKeySignatureBy
   ) where
 
 {-|  Helper functions for making more musical sense of the parse tree
@@ -22,24 +30,35 @@ module Music.Notation
 @docs KeySet, KeyClass, MidiPitch, AbcTempo, NoteTime
 
 # Functions
-@docs keySet
-    , scale
+@docs notesInChromaticScale
+    , keySet
+    , modifiedKeySet
+    , getKeySet
+    , getKeySig
+    , scale   
+    , isCOrSharpKey
     , accidentalImplicitInKey
+    , accidentalInKeySet
+    , naturaliseIfInKeySet
+    , sharpenFlatEnharmonic
     , dotFactor
     , toMidiPitch
     , noteDuration  
     , chordalNoteDuration
+    , transposeKeySignatureBy
 
 -}
 
 import List.Extra exposing (getAt, splitAt, elemIndex, tails)
 import List exposing (member, isEmpty)
 import Maybe exposing (withDefault, oneOf)
-import Maybe.Extra exposing (join)
+import Maybe.Extra exposing (join, isJust)
 import String exposing (contains, endsWith, fromChar)
 import Dict exposing (Dict, fromList, get)
-import Abc.ParseTree exposing (Mode (..), Accidental (..), KeySignature, ModifiedKeySignature, KeyAccidental, PitchClass (..), AbcNote)
+import Abc.ParseTree exposing (..)
 import Ratio exposing (Rational, over, fromInt, toFloat, add)
+
+
 import Debug exposing (..)
 
 {-| a complete pitch class (the white note and the accidental) -}
@@ -71,6 +90,8 @@ type alias AbcTempo =
 
 
 -- EXPORTED FUNCTIONS
+notesInChromaticScale : Int
+notesInChromaticScale = 12
     
 {-| return the set of keys (pitch classes with accidental) that comprise the key signature -}
 keySet : KeySignature -> KeySet
@@ -79,7 +100,6 @@ keySet ks =
      |> List.filter accidentalKey
 
 {-| return the set of keys (pitch classes with accidental) that comprise a modified key signature -}
--- not finished
 modifiedKeySet : ModifiedKeySignature -> KeySet
 modifiedKeySet ksm =  
   let
@@ -90,6 +110,30 @@ modifiedKeySet ksm =
       ks
     else
       List.foldr modifyKeySet ks mods
+
+{-| get set of key accidentals from the (possibly modified) key (if there is one in the tune) -}
+getKeySet : AbcTune -> KeySet
+getKeySet t =
+  let
+    mksig = getKeySig t
+  in case mksig of
+    Just ksig -> modifiedKeySet ksig
+    Nothing -> []
+
+{-| get the key signature (if any) from the tune -}
+getKeySig : AbcTune -> Maybe ModifiedKeySignature
+getKeySig t =
+  let
+    headers = fst t
+    f h = case h of
+      Key mks -> Just mks
+      _ -> Nothing
+    ksigs = List.map f headers
+      |> List.filter isJust
+  in 
+    List.head ksigs
+     |> join
+
 
 {-| return the set of keys (pitch classes) that comprise a complete 11-note scale -}
 scale : KeySignature -> Scale
@@ -104,6 +148,18 @@ scale ks =
         majorScale target
       m ->
         modalScale target ks.mode
+
+
+{-| return True if the key signature is a sharp key or a simple C Major key -}
+isCOrSharpKey : KeySignature -> Bool
+isCOrSharpKey ksig =
+  let
+    kset = keySet ksig
+    -- if we make the default (for an empty list) as a samplemsharp then we return true for the scale of C Major
+    (samplePC, sampleMacc) = List.head kset
+                               |> withDefault (C, Just Sharp)
+  in
+    sampleMacc == Just Sharp
 
 {-| return an accidental if it is implicitly there in the (modified) key signature 
     attached to the pitch class of the note -}
@@ -129,30 +185,36 @@ accidentalInKeySet n ks =
     Dict.get (toString n.pitchClass) lookup
       |> join
 
-{- old, very inefficient version.  I'll fix this once elm allows me to use my ADTs in Dicts
-
-accidentalInKeySet'' : AbcNote -> KeySet -> Maybe Accidental
-accidentalInKeySet'' n ks =
-  let
-    sharpTarget = (n.pitchClass, Just Sharp)
-    flatTarget = (n.pitchClass, Just Flat)
-    doubleSharpTarget = (n.pitchClass, Just DoubleSharp)
-    doubleFlatTarget = (n.pitchClass, Just DoubleFlat)
-    naturalTarget = (n.pitchClass, Just Natural)
+{- If the actual (PitchClass, maybe Accidental) within the note exists in the key set, 
+   return the note with the pitch naturalised, otherwise leave it intact.
+   This is the reverse operation to accidentalInKeySet and is used when looking up a note
+   which is explictly marked with an accidental in order to display it as text
+   because the accidental is implied by the key signature
+-}
+naturaliseIfInKeySet : AbcNote -> KeySet -> AbcNote
+naturaliseIfInKeySet n ks =
+  let 
+    -- target = log "naturalise looking for " (n.pitchClass, n.accidental)
+    target = (n.pitchClass, n.accidental)
   in
-    if List.member sharpTarget ks then
-      Just Sharp
-    else if List.member flatTarget ks then
-      Just Flat
-    else if List.member doubleSharpTarget ks then
-      Just DoubleSharp
-    else if List.member doubleFlatTarget ks then
-      Just DoubleFlat
-    else if List.member naturalTarget ks then
-      Just Natural
+    if (List.member target ks) then
+      {n | accidental = Nothing }
     else
-      Nothing
+      n
+
+{- enharmonic equivalence for flattened notes
+   We'll (for the moment) use the convention that most flat accidentals
+   are presented in sharpened form
  -}
+sharpenFlatEnharmonic : AbcNote -> AbcNote
+sharpenFlatEnharmonic n = 
+  let 
+    target = (n.pitchClass, n.accidental)
+  in
+    case target of 
+      (G, Just Flat) -> { n | pitchClass = F, accidental = Just Sharp }
+      (D, Just Flat) -> { n | pitchClass = C, accidental = Just Sharp } 
+      _ -> n
 
 {- modify a key set with a new accidental -}
 modifyKeySet : KeyAccidental -> KeySet -> KeySet
@@ -192,7 +254,7 @@ dotFactor i =
 -}
 toMidiPitch : AbcNote -> ModifiedKeySignature -> KeySet -> MidiPitch
 toMidiPitch n mks barAccidentals =
-  (n.octave * 12) + midiPitchOffset n mks barAccidentals
+  (n.octave * notesInChromaticScale) + midiPitchOffset n mks barAccidentals
 
 {-| find a real world note duration by translating an ABC note duration using a tempo and unit note length  -}
 noteDuration : AbcTempo -> Rational -> NoteTime
@@ -205,7 +267,7 @@ noteDuration t n =
 {-| find a real world duration of a note in a chord by translating an ABC note duration together with a chord duration using a tempo and unit note length -}
 chordalNoteDuration : AbcTempo -> Rational -> Rational -> NoteTime
 chordalNoteDuration t note chord = 
-   (60.0 * (Ratio.toFloat t.unitNoteLength)* (Ratio.toFloat note) * (Ratio.toFloat chord)) / 
+  (60.0 * (Ratio.toFloat t.unitNoteLength)* (Ratio.toFloat note) * (Ratio.toFloat chord)) / 
     ((Ratio.toFloat t.tempoNoteLength) * (Basics.toFloat t.bpm))
 
 -- implementation
@@ -282,6 +344,7 @@ equivalentEnharmonic k =
    (G, Just Sharp) -> (A, Just Flat)
    _ -> k
 
+
 majorIntervals : Intervals
 majorIntervals = [2,2,1,2,2,2,1]
 
@@ -339,11 +402,22 @@ partialSum l =
     |> List.reverse
     |> List.take (List.length l)  
 
--- find the pitch class at a given position in the scale   
+{- find the pitch class at a given position in the scale   
+   modulate the index to be in the range 0 <= index < notesInChromaticScale
+   where a negative value rotates left from the maximum value in the scale 
+-}
 lookUp : ChromaticScale -> Int -> KeyClass
 lookUp s i =
-  getAt s i
-    |> withDefault (C, Nothing)
+  let
+    modi = i % notesInChromaticScale
+    index =
+      if (modi < 0) then
+        notesInChromaticScale - modi
+      else
+        modi
+  in
+    getAt s index
+      |> withDefault (C, Nothing)
     
 -- provide the Major scale for the pitch class  
 majorScale : KeyClass -> Scale
@@ -377,7 +451,7 @@ modalScale target mode =
       _ -> 0  
     index = elemIndex target sharpScale
              |> withDefault 0
-    majorKeyIndex = (index + distance) % 12
+    majorKeyIndex = (index + distance) % notesInChromaticScale
     majorKey = lookUp sharpScale majorKeyIndex
   in 
     majorScale (equivalentEnharmonic majorKey)  
@@ -411,15 +485,66 @@ midiPitchOffset n mks barAccidentals =
     -- look first for an explicit note accidental, then for an explicit for the same note that occurred earlier in the bar and 
     -- finally look for an implicit accidental attached to this key signature
     maybeAccidental = oneOf [n.accidental, inBarAccidental, inKeyAccidental]
-    f a = case a of
-      Sharp -> "#"
-      Flat -> "b"
-      _ -> ""
-    accidental = withDefault "" (Maybe.map f maybeAccidental)
+    accidental = accidentalPattern maybeAccidental
     pattern = (toString n.pitchClass) ++ accidental
   in
     withDefault 0 (Dict.get pattern chromaticScaleDict)
 
+{- turn an optional accidental into a string pattern for use in lookups -}
+accidentalPattern : Maybe Accidental -> String
+accidentalPattern ma = 
+  let
+    f a = case a of
+      Sharp -> "#"
+      Flat -> "b"
+      _ -> ""
+  in
+    withDefault "" (Maybe.map f ma)
+
+transposeKeySignatureBy : Int -> ModifiedKeySignature -> ModifiedKeySignature
+transposeKeySignatureBy i mks =
+  let
+    (ks, keyaccs) = mks
+    -- turn the key sig to a string pattern and look up its index
+    pattern = (toString ks.pitchClass) ++ (accidentalPattern ks.accidental)
+    index =  withDefault 0 (Dict.get pattern chromaticScaleDict)
+    -- keep hold of the sharp / flat nature of the original scale
+    scale =
+      if (isCOrSharpKey ks) then
+        sharpScale
+      else
+        flatScale
+    -- now look up the transposed key at the new index
+    (pc, ma) = 
+      getAt scale (index + i)
+        |> withDefault (C, Nothing)
+    -- modify the key accidentals likewise
+    accs = List.map (transposeKeyAccidentalBy i) keyaccs
+  in
+    ( { pitchClass = pc, accidental = ma, mode = ks.mode }, accs )
+
+{- transpose a key accidental  (a key signature modifier)
+   not finished
+-}
+transposeKeyAccidentalBy : Int -> KeyAccidental -> KeyAccidental
+transposeKeyAccidentalBy i ka =
+  let
+    pattern = (toString ka.pitchClass) 
+    index = withDefault 0 (Dict.get pattern chromaticScaleDict)
+    (modifier, scale) = 
+      case ka.accidental of
+       Sharp -> (1, sharpScale)
+       Flat  -> (-1, flatScale)
+       DoubleSharp -> (2, sharpScale)
+       DoubleFlat -> (-2, flatScale)
+       Natural -> (0, sharpScale)
+    (pc, ma) = 
+      getAt scale (index + modifier + i)
+        |> withDefault (C, Nothing)
+  in
+    case ma of
+      Nothing -> { pitchClass = pc, accidental = Natural }
+      Just a -> { pitchClass = pc, accidental = a }
 
 
 

@@ -189,7 +189,7 @@ instTriplet =
    " This is extremely common in Swedish polskas - for example the start of the Grind Hans Jässpôdspolska."
 
 xmplTriplet = 
-   "K:Dmaj\r\n| A2 d2 e>f | (3g2f2d2 B2- |"
+   "K:Dmaj\r\n| A2 d2 e>f | (3g2f2d2 B2 |"
 
 instComplexTriplet = 
    "If your triplet has notes of different lengths, you have to use the complex triplet notation." ++

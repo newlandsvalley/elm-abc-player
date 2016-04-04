@@ -659,7 +659,7 @@ abcNote = buildNote <$> maybeAccidental <*> pitch <*> moveOctave <*> maybe noteD
                <?> "ABC note"
 
 abcChord : Parser AbcChord
-abcChord = buildChord <$> maybeAccidental <*>  (between (char '[') (char ']') (many1 abcNote)) <*> maybe noteDur 
+abcChord = buildChord <$> (between (char '[') (char ']') (many1 abcNote)) <*> maybe noteDur 
                <?> "ABC chord"
 
 {- an upper or lower case note ([A-Ga-g]) -}
@@ -889,13 +889,12 @@ buildKeyAccidental a pitchStr =
   in
     { accidental = a, pitchClass = pc }
 
-buildChord : Maybe Accidental -> List AbcNote -> Maybe Rational ->  AbcChord
-buildChord macc ns ml = 
+buildChord : List AbcNote -> Maybe Rational ->  AbcChord
+buildChord ns ml = 
   let
     l = withDefault (Ratio.fromInt 1) ml
-    -- a = buildAccidental macc
   in 
-    { notes = ns, accidental = macc, duration = l }
+    { notes = ns, duration = l }
 
 {- build a tuplet signature {p,q,r) - p notes in the time taken for q
    in operation over the next r notes
