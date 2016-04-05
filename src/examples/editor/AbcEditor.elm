@@ -6,7 +6,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (on, targetValue, onClick)
 import DynamicStyle exposing (hover)
 import Task exposing (Task, andThen, succeed, sequence, onError)
-import List exposing (reverse)
+import List exposing (reverse, isEmpty)
 import Maybe exposing (Maybe, withDefault)
 import String exposing (toInt)
 import Result exposing (Result, formatError)
@@ -15,10 +15,16 @@ import Dict exposing (Dict)
 import SoundFont exposing (..)
 import Abc exposing (..)
 import AbcPerformance exposing (melodyFromAbcResult)
+import Abc.ParseTree exposing (AbcTune)
 import Melody exposing (..)
 import Notable exposing (..)
 import Debug exposing (..)
 import Json.Encode as Json
+
+{-| Beginnings of an ABC editor.  The eventual plan is to provide an editor which continually parses the ABC as it is entered and flags up errors.
+    If the (checked) tune contains a key signature, then transposition options will be shown. 
+
+-}
 
 -- MODEL
 type alias Sound = Task Effects.Never ()
@@ -29,9 +35,17 @@ type alias Model =
     , loaded : Bool
     , maybeContext : Maybe AudioContext
     , abc : String
-    , error : Maybe ParseError
+    , tuneResult : Result ParseError AbcTune
     , buttonsDisabled : Bool
     }
+
+dummyError : ParseError
+dummyError = 
+  {  msgs = []
+  ,  input = ""
+  ,  position = 0
+  }
+
 
 init : String -> (Model, Effects Action)
 init topic =
@@ -40,7 +54,7 @@ init topic =
     ,  loaded = False
     ,  maybeContext = Nothing
     ,  abc = ""
-    ,  error = Nothing
+    ,  tuneResult = Err dummyError
     ,  buttonsDisabled = True -- disabled until the soundfonts load
     }
   , Effects.none
@@ -53,15 +67,19 @@ type Action
     | LoadFont (Maybe SoundSample)
     | Abc String
     | Play     
+    | Transpose
     | ShowButtons -- immediately after play has ended
-    | Error ParseError
+    | HideButtons -- on a parse error
+    | TuneResult (Result ParseError AbcTune)
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
   case action of
     NoOp -> (model, Effects.none )
 
-    ShowButtons -> ( {model | buttonsDisabled = False } , Effects.none )
+    ShowButtons -> ( {model | buttonsDisabled = False } , Effects.none )   
+
+    HideButtons -> ( {model | buttonsDisabled = True } , Effects.none )
 
     LoadFont mss ->
       case mss of
@@ -78,11 +96,13 @@ update action model =
                   Effects.none
                 )        
 
-    Abc s ->  ( { model | abc = s }, Effects.none )     
+    Abc s ->  ( { model | abc = s }, checkAbc s )     
 
-    Play -> ( { model | error = Nothing, buttonsDisabled = True }, playAbc model)   
+    Play -> ( { model | buttonsDisabled = True }, playAbc model)   
 
-    Error pe ->  ( { model | error = Just pe }, showButtonsAction  ) 
+    Transpose -> (model, Effects.none )
+
+    TuneResult tr ->  ( { model | tuneResult = tr }, buttonsVisibilityAction  model) 
 
 {- finalise the audio context in the model -}
 finaliseAudioContext : Model -> Model
@@ -154,13 +174,22 @@ suspend rp =
     
 {- just the ShowButton action wrapped in a Task -}
 showButtons : Task Never Action
-showButtons = succeed (ShowButtons)            
+showButtons = succeed (ShowButtons)     
 
-{- and as an effect -}
-showButtonsAction : Effects Action
-showButtonsAction =
-  showButtons
-  |> Effects.task
+{- just the HideButton action wrapped in a Task -}
+hideButtons : Task Never Action
+hideButtons = succeed (HideButtons)            
+
+{- decide whether or not to show or hide the buttons as an action -}
+buttonsVisibilityAction : Model -> Effects Action
+buttonsVisibilityAction m =
+  case m.tuneResult of
+    Ok _ -> 
+      showButtons
+        |> Effects.task
+    Err _ ->
+      hideButtons
+        |> Effects.task
 
 {- check Audio is present and show the buttons if so -}
 checkAudio : Effects Action
@@ -181,9 +210,9 @@ performanceDuration rp =
         Nothing -> log "nothing" 0.0
         Just ne -> log "Just" (fst ne)  -- the accumulated time
 
-returnError : ParseError -> Effects Action
-returnError e =
-  Task.succeed (Error e)
+returnTuneResult : Result ParseError AbcTune -> Effects Action
+returnTuneResult r =
+  Task.succeed (TuneResult r)
     |> Effects.task
     
 terminateLine : String -> String
@@ -202,6 +231,13 @@ toPerformance ml =
    in
      Result.map (fromMelodyLine 0.0) melody
 
+checkAbc : String -> Effects Action
+checkAbc abc = 
+  let 
+    terminatedAbc = log "checking" (terminateLine abc)
+    pr = parse terminatedAbc
+  in 
+    returnTuneResult (pr)
     
 playAbc : Model -> Effects Action
 playAbc m = 
@@ -216,51 +252,66 @@ playAbc m =
       makeSounds m.maybeContext m.samples pr
         |> playSounds pr
     Err e ->
-      returnError e
+      Effects.none
+      
 
 -- VIEW
 
-viewError : Maybe ParseError -> String
+viewError : Result ParseError AbcTune -> String
 viewError me =
   case me of
-    Nothing -> ""
-    Just e -> parseError e 
+    Err e -> 
+      -- we start off with a dummy error message which is empty
+      if (isEmpty e.msgs) then
+        ""
+      else
+        parseError e 
+    _ -> ""
 
 view : Signal.Address Action -> Model -> Html
 view address model =
   if (isWebAudioEnabled) then
-    div [ centreStyle ]
+    div [ ]
       [  
-         h1 [ ] [ text "ABC Editor" ]   
-      ,  fieldset [ fieldsetStyle ]
-           [
-             legend [ legendStyle ] [ text "you can edit the text inside the box and then hit play" ]
-           , textarea
+         h1 [ centreStyle ] [ text "ABC Editor" ]   
+      ,  div [ leftPaneStyle ]
+           [ select [ leftPanelWidgetStyle ] 
+               [
+                  option [] [text "transposition placeholder" ]
+               ]
+           ]
+      ,  div [ rightPaneStyle ]
+         [
+           fieldset [ fieldsetStyle  ]
+             [
+            
+             textarea
                ([ 
                placeholder "abc"
                , value model.abc
                , on "input" targetValue (\a -> Signal.message address (Abc a))
                , taStyle
                , cols 70
-               , rows 12
+               , rows 16
                , autocomplete False
                , spellcheck False
                , autofocus True
                ] ++ highlights model)
                [  ] 
-           ]
-      ,  div
-         [ centreStyle ]       
-           [  
+            ]
+           ,  div
+             [  ]       
+               [  
  
-             button ( buttonAttributes model.buttonsDisabled address Play)
-                       [ text "play" ]
+                 button ( buttonAttributes model.buttonsDisabled address Play)
+                       [ text "play" ] 
  
-           ]
-      ,  div 
-         [ centreStyle ] 
-           [ 
-             p [] [ text (viewError model.error) ] 
+               ]
+           ,  div 
+             [  ] 
+               [ 
+                 p [] [ text (viewError model.tuneResult) ] 
+               ]
            ]
       ]
   else
@@ -300,6 +351,13 @@ instructionStyle =
     , ("font", "100% \"Trebuchet MS\", Verdana, sans-serif")
     ]
 
+leftPanelWidgetStyle : Attribute
+leftPanelWidgetStyle =
+  style
+    [      
+      ("margin-left", "40px")
+    , ("margin-top", "40px")
+    ]
 
 {- style a centered component -}    
 centreStyle : Attribute
@@ -308,6 +366,22 @@ centreStyle =
      [
        ("text-align", "center")
      ,  ("margin", "auto") 
+     ]
+
+leftPaneStyle : Attribute
+leftPaneStyle =
+  style
+     [
+        ("float", "left") 
+     ,  ("width", "300px")
+     
+     ]
+
+rightPaneStyle : Attribute
+rightPaneStyle =
+  style
+     [
+        ("float", "left")
      ]
 
 {- gather together all the button attributes -}
@@ -399,19 +473,19 @@ legendStyle =
 highlights : Model -> List Attribute
 highlights model =
   let 
-    mpe = model.error
+    tr = model.tuneResult
   in
-    case mpe of
-      Nothing ->
+    case tr of
+      Err pe ->
+        if (String.length model.abc > pe.position) then
+          [ property "selectionStart" (Json.string (toString pe.position))
+          , property "selectionEnd" (Json.string (toString (pe.position  + 1)))
+          , property "focus" (Json.null)
+          ]
+        else
+          []
+      _ ->
         []
-      Just pe ->
-       if (String.length model.abc > pe.position) then
-         [ property "selectionStart" (Json.string (toString pe.position))
-         , property "selectionEnd" (Json.string (toString (pe.position  + 1)))
-         , property "focus" (Json.null)
-         ]
-       else
-         []
 
 -- INPUTS
 
