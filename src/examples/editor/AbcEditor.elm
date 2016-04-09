@@ -33,10 +33,10 @@ type alias Sounds = List Sound
 type alias Model =
     { samples : Dict Int SoundSample
     , loaded : Bool
+    , playing : Bool
     , maybeContext : Maybe AudioContext
     , abc : String
     , tuneResult : Result ParseError AbcTune
-    , buttonsDisabled : Bool
     }
 
 dummyError : ParseError
@@ -52,10 +52,10 @@ init topic =
   ( { 
        samples = Dict.empty
     ,  loaded = False
+    ,  playing = False
     ,  maybeContext = Nothing
     ,  abc = ""
     ,  tuneResult = Err dummyError
-    ,  buttonsDisabled = True -- disabled until the soundfonts load
     }
   , Effects.none
   )
@@ -67,19 +67,14 @@ type Action
     | LoadFont (Maybe SoundSample)
     | Abc String
     | Play     
+    | PlayCompleted    
     | Transpose
-    | ShowButtons -- immediately after play has ended
-    | HideButtons -- on a parse error
     | TuneResult (Result ParseError AbcTune)
 
 update : Action -> Model -> (Model, Effects Action)
 update action model =
   case action of
     NoOp -> (model, Effects.none )
-
-    ShowButtons -> ( {model | buttonsDisabled = False } , Effects.none )   
-
-    HideButtons -> ( {model | buttonsDisabled = True } , Effects.none )
 
     LoadFont mss ->
       case mss of
@@ -88,7 +83,7 @@ update action model =
         Just ss -> 
           case ss.name of
             "end" ->
-               ( finaliseAudioContext model, checkAudio )
+               ( finaliseAudioContext model, Effects.none )
             _ -> 
               let pitch = toInt ss.name
               in
@@ -98,11 +93,13 @@ update action model =
 
     Abc s ->  ( { model | abc = s }, checkAbc s )     
 
-    Play -> ( { model | buttonsDisabled = True }, playAbc model)   
+    Play -> ( { model | playing = True }, playAbc model)   
+
+    PlayCompleted -> ( { model | playing = False }, Effects.none)   
 
     Transpose -> (model, Effects.none )
 
-    TuneResult tr ->  ( { model | tuneResult = tr }, buttonsVisibilityAction  model) 
+    TuneResult tr ->  ( { model | tuneResult = tr }, Effects.none) 
 
 {- finalise the audio context in the model -}
 finaliseAudioContext : Model -> Model
@@ -154,7 +151,7 @@ makeSounds mctx ss perfResult =
 playSounds : Result ParseError Performance -> Sounds -> Effects Action
 playSounds rp sounds =   
    playAndSuspend rp sounds
-        |> Task.map (\_ -> ShowButtons)
+        |> Task.map (\_ -> PlayCompleted)
         |> Effects.task      
       
 {- play the sounds and suspend the UI -}      
@@ -163,7 +160,7 @@ playAndSuspend rp sounds =
    sequence sounds   
      `andThen` (\_ -> suspend rp)      
       
-{- sleep for a number od seconds -}
+{- sleep for a number of seconds -}
 suspend : Result ParseError Performance -> Task Never Action
 suspend rp =
   let
@@ -172,26 +169,17 @@ suspend rp =
     Task.sleep time
       `andThen` (\_ -> succeed (NoOp))
     
-{- just the ShowButton action wrapped in a Task -}
-showButtons : Task Never Action
-showButtons = succeed (ShowButtons)     
 
-{- just the HideButton action wrapped in a Task -}
-hideButtons : Task Never Action
-hideButtons = succeed (HideButtons)            
-
-{- decide whether or not to show or hide the buttons as an action -}
-buttonsVisibilityAction : Model -> Effects Action
-buttonsVisibilityAction m =
+{- a different attempt at checking if buttons are enabled -}
+areButtonsEnabled : Model -> Bool
+areButtonsEnabled m =
   case m.tuneResult of
     Ok _ -> 
-      showButtons
-        |> Effects.task
-    Err _ ->
-      hideButtons
-        |> Effects.task
+      not (m.playing)
+    Err _ -> False
 
 {- check Audio is present and show the buttons if so -}
+{-
 checkAudio : Effects Action
 checkAudio =
   if (isWebAudioEnabled) then
@@ -199,6 +187,7 @@ checkAudio =
       |> Effects.task
   else
     Effects.none
+-}
      
 performanceDuration : Result ParseError Performance  -> Float
 performanceDuration rp =
@@ -292,7 +281,7 @@ view address model =
                , on "input" targetValue (\a -> Signal.message address (Abc a))
                , taStyle
                , cols 70
-               , rows 16
+               , rows 10
                , autocomplete False
                , spellcheck False
                , autofocus True
@@ -303,7 +292,7 @@ view address model =
              [  ]       
                [  
  
-                 button ( buttonAttributes model.buttonsDisabled address Play)
+                 button ( buttonAttributes (areButtonsEnabled model) address Play)
                        [ text "play" ] 
  
                ]
@@ -386,16 +375,16 @@ rightPaneStyle =
 
 {- gather together all the button attributes -}
 buttonAttributes : Bool -> Signal.Address Action -> Action -> List Attribute
-buttonAttributes isDisabled address action =
-  hoverButton isDisabled ++
-    [ bStyle isDisabled
+buttonAttributes isEnabled address action =
+  hoverButton isEnabled ++
+    [ bStyle isEnabled
     , onClick address action
-    , disabled isDisabled 
+    , disabled (not isEnabled)
     ] 
 
 {- style a button -}
 bStyle : Bool -> Attribute
-bStyle disabled = 
+bStyle enabled = 
   let
     basecss =
       [
@@ -418,11 +407,7 @@ bStyle disabled =
       , ("transition-duration", "0.2s")
      ]
     colour =
-      if disabled then
-        [ ("background-color", "#7D7C7C")
-        , ("color", "grey")
-        ]
-      else
+      if enabled then
         [ ("background-color", "#67d665")
         , ("background", "-webkit-gradient(linear, left top, left bottom, from(#3e9c5f), to(#67d665))")
         , ("background", "-webkit-linear-gradient(top, #3e9c5f, #67d665)")
@@ -431,16 +416,21 @@ bStyle disabled =
         , ("background", "-o-linear-gradient(top, #3e9c5f, #67d665)")
         , ("color", "black")
         ]  
+      else
+        [ ("background-color", "#7D7C7C")
+        , ("color", "grey")
+        ]
   in
     style (basecss ++ colour)
 
 {- hover over a button -}
 hoverButton : Bool -> List Attribute
-hoverButton disabled =      
-  if disabled then
-    []
+hoverButton enabled =      
+  if enabled then
+     hover [("background-color","#67d665","#669966")]
   else
-    hover [("background-color","#67d665","#669966")]
+    []
+  
 
 {- style a fieldset -}
 fieldsetStyle : Attribute
