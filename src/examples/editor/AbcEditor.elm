@@ -16,7 +16,9 @@ import SoundFont exposing (..)
 import Abc exposing (..)
 import AbcPerformance exposing (melodyFromAbcResult)
 import Abc.ParseTree exposing (AbcTune, PitchClass (..), Mode (..), Accidental (..), ModifiedKeySignature, KeySignature)
+import Abc.Canonical exposing (fromResult)
 import Music.Notation exposing (getKeySig)
+import Music.Transposition exposing (transposeTo)
 import Melody exposing (..)
 import Notable exposing (..)
 import Debug exposing (..)
@@ -69,7 +71,7 @@ type Action
     | Abc String
     | Play     
     | PlayCompleted    
-    | Transpose
+    | Transpose String
     | TuneResult (Result ParseError AbcTune)
 
 update : Action -> Model -> (Model, Effects Action)
@@ -98,7 +100,7 @@ update action model =
 
     PlayCompleted -> ( { model | playing = False }, Effects.none)   
 
-    Transpose -> (model, Effects.none )
+    Transpose s -> (transpose s model, Effects.none )
 
     TuneResult tr ->  ( { model | tuneResult = tr }, Effects.none) 
 
@@ -243,6 +245,31 @@ playAbc m =
         |> playSounds pr
     Err e ->
       Effects.none
+
+{- transpose the tune to a new key -}
+transpose : String -> Model -> Model
+transpose kstr model =
+  let
+    mksr = parseKeySignature kstr
+  in
+    case (mksr, model.tuneResult) of
+      (Ok mks, Ok tune) ->
+        let
+          newTuneResult = transposeTo mks tune
+          -- this is awkward in elm's Result - in this instance we're guaranteed not to have errors
+          -- in transposition because our modes always match.  Just convert the notional String error to a notional empty parser error
+          newTRCorrectedErr = 
+            newTuneResult
+               |> formatError (\_ -> dummyError)
+          -- and collect the new ABC wrapped in a Result 
+          newAbcResult = fromResult newTuneResult
+        in
+          -- if we're OK, we have both a new ABC Tune and a new ABC source of that tune
+          case newAbcResult of
+            Ok newAbc ->
+              { model | abc = newAbc, tuneResult =  newTRCorrectedErr }
+            _ -> model
+      _ -> model
       
 
 -- VIEW
@@ -277,8 +304,7 @@ view address model =
       [  
          h1 [ centreStyle ] [ text "ABC Editor" ]   
       ,  div [ leftPaneStyle ]
-           [ select [ leftPanelWidgetStyle ] 
-               (transpositionMenu model)
+           [ transpositionMenu address model
            ]
       ,  div [ rightPaneStyle ]
          [
@@ -316,11 +342,12 @@ view address model =
       ]
   else
     div [ centreStyle ]
-      [  p [ ] [ text "It seems as if your browser does not support web-audio.  Perhaps try Chrome" ]
+      [  p [ ] [ text "It seems as if your browser does not support web-audio.  Perhaps try Chrome." ]
       ] 
 
-transpositionMenu : Model -> List Html
-transpositionMenu m =
+{- an active menu of transposition options -} 
+transpositionMenu : Signal.Address Action -> Model -> Html
+transpositionMenu address m =
   let mKeySig =
     case
       m.tuneResult of
@@ -329,16 +356,21 @@ transpositionMenu m =
   in
     case mKeySig of
       Just mks ->
-        transpositionOptions mks
+        select [ leftPanelWidgetStyle
+               , on "change" targetValue (\a -> Signal.message address (Transpose a)) ] 
+          (transpositionOptions mks)
       Nothing -> 
-        [
-          option [] [text "no key signature yet" ]
-        ]
+        select [ leftPanelWidgetStyle
+               , (disabled True) 
+               ] 
+          [
+            option [] [text "no key signature" ]
+          ]
 
 {- offer a menu of transposition options, appropriate to the 
-   current key (if such a key has been entered in the ABC
-   The mode always matches the current mode and the selected option
-   matches the current key
+   current key (if such a key has been entered in the ABC).
+   The mode of each option always matches the current mode and 
+   the selected option matches the current key
 -}
 transpositionOptions : ModifiedKeySignature -> List Html
 transpositionOptions mks =
@@ -528,22 +560,6 @@ fieldsetStyle =
     , ("padding", "10px 10px 20px 10px")
     , ("display", "inline-block")
     ]
-
-{- style a fieldset legend -}
-legendStyle : Attribute
-legendStyle = 
-  style
-   [
-     ("background-color",  "#67d665") 
-   , ("border-top", "1px solid #d4d4d4")
-   , ("border-bottom", "1px solid #d4d4d4")
-   , ("-moz-box-shadow", "3px 3px 3px #ccc")
-   , ("-webkit-box-shadow", "3px 3px 3px #ccc")
-   , ("box-shadow", "3px 3px 3px #ccc")
-   , ("font-size", "1em")
-   , ("padding", "0.3em 1em")
-   ]
-
 
 errorHighlightStyle : Attribute
 errorHighlightStyle =

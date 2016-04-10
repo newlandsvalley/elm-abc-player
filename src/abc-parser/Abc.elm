@@ -1,5 +1,6 @@
 module Abc
     (  parse
+    ,  parseKeySignature
     ,  parseError
     ,  ParseError
     ) where
@@ -10,7 +11,7 @@ module Abc
 # Definition
 
 # Functions
-@docs parse, parseError
+@docs parse, parseKeySignature, parseError
 
 # Types
 @docs ParseError
@@ -962,6 +963,19 @@ parse s =
   case Combine.parse abc s of
     (Ok n, _) ->
       Ok n
+
+    (Err msgs, ctx) ->
+      Err { msgs = msgs, input = ctx.input, position = ctx.position }
+
+{-| Parse a key signature 
+    A utility function for applications needing to parse key signatures in isolation
+    and returning them as a ModifiedKeySignature (where the modification is empty)
+-}
+parseKeySignature : String -> Result.Result ParseError ModifiedKeySignature
+parseKeySignature s =
+  case Combine.parse keySignature s of
+    (Ok n, _) ->
+      Ok (n, [])
 
     (Err msgs, ctx) ->
       Err { msgs = msgs, input = ctx.input, position = ctx.position }
