@@ -15,7 +15,8 @@ import Dict exposing (Dict)
 import SoundFont exposing (..)
 import Abc exposing (..)
 import AbcPerformance exposing (melodyFromAbcResult)
-import Abc.ParseTree exposing (AbcTune)
+import Abc.ParseTree exposing (AbcTune, PitchClass (..), Mode (..), Accidental (..), ModifiedKeySignature, KeySignature)
+import Music.Notation exposing (getKeySig)
 import Melody exposing (..)
 import Notable exposing (..)
 import Debug exposing (..)
@@ -277,9 +278,7 @@ view address model =
          h1 [ centreStyle ] [ text "ABC Editor" ]   
       ,  div [ leftPaneStyle ]
            [ select [ leftPanelWidgetStyle ] 
-               [
-                  option [] [text "transposition placeholder" ]
-               ]
+               (transpositionMenu model)
            ]
       ,  div [ rightPaneStyle ]
          [
@@ -319,6 +318,79 @@ view address model =
     div [ centreStyle ]
       [  p [ ] [ text "It seems as if your browser does not support web-audio.  Perhaps try Chrome" ]
       ] 
+
+transpositionMenu : Model -> List Html
+transpositionMenu m =
+  let mKeySig =
+    case
+      m.tuneResult of
+        Ok tune -> getKeySig tune
+        _ -> Nothing
+  in
+    case mKeySig of
+      Just mks ->
+        transpositionOptions mks
+      Nothing -> 
+        [
+          option [] [text "no key signature yet" ]
+        ]
+
+{- offer a menu of transposition options, appropriate to the 
+   current key (if such a key has been entered in the ABC
+   The mode always matches the current mode and the selected option
+   matches the current key
+-}
+transpositionOptions : ModifiedKeySignature -> List Html
+transpositionOptions mks =
+  let
+    ks = fst mks
+    mode = ks.mode    
+  in
+    [ option [ selectedKey ks (key C mode) ] 
+       [ displayKeySig (key C mode) ]
+    , option [ selectedKey ks (sharpKey C mode) ] 
+       [ displayKeySig (sharpKey C mode) ]
+    , option [ selectedKey ks (key D mode) ] 
+       [ displayKeySig (key D mode) ]
+    , option [ selectedKey ks (flatKey E mode) ] 
+       [ displayKeySig (flatKey E mode) ]
+    , option [ selectedKey ks (key E mode) ] 
+       [ displayKeySig (key E mode) ]
+    , option [ selectedKey ks (key F mode) ] 
+       [ displayKeySig (key F mode) ]
+    , option [ selectedKey ks (sharpKey F mode) ] 
+       [ displayKeySig (sharpKey F mode) ]
+    , option [ selectedKey ks (key G mode) ] 
+       [ displayKeySig (key G mode) ]
+    , option [ selectedKey ks (flatKey A mode) ] 
+       [ displayKeySig (flatKey A mode) ]
+    , option [ selectedKey ks (key A mode) ] 
+       [ displayKeySig (key A mode) ]
+    , option [ selectedKey ks (flatKey B mode) ] 
+       [ displayKeySig (flatKey B mode) ]
+    , option [ selectedKey ks (key B mode) ] 
+       [ displayKeySig (key B mode) ]
+    ]
+
+{- return a (selected true) attriubute if the pattern key signature matches the target -}
+selectedKey : KeySignature -> KeySignature -> Attribute
+selectedKey target pattern =
+  let
+    isMatched = (target.pitchClass == pattern.pitchClass) && (target.accidental == pattern.accidental)
+  in
+    selected isMatched
+
+{- display a key signature as text -}
+displayKeySig : KeySignature -> Html
+displayKeySig ks =
+  let 
+    accidental =
+      case ks.accidental of
+        Just Sharp -> "#"
+        Just Flat -> "b"
+        _ -> ""
+  in
+    text ( toString ks.pitchClass ++ accidental ++ " " ++ toString ks.mode )
 
 
 {- style a textarea -}
@@ -491,6 +563,20 @@ signals =
     [Signal.map LoadFont pianoFonts]
   else
     []
+
+-- key signatures
+key : PitchClass -> Mode -> KeySignature
+key pc m = { pitchClass = pc, accidental = Nothing, mode = m }
+
+sharpKey : PitchClass -> Mode -> KeySignature
+sharpKey pc m = { pitchClass = pc, accidental = Just Sharp, mode = m }
+
+flatKey : PitchClass -> Mode -> KeySignature
+flatKey pc m = { pitchClass = pc, accidental = Just Flat, mode = m }
+
+
+
+
 
 
 
