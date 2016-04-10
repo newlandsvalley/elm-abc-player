@@ -8,7 +8,7 @@ import DynamicStyle exposing (hover)
 import Task exposing (Task, andThen, succeed, sequence, onError)
 import List exposing (reverse, isEmpty)
 import Maybe exposing (Maybe, withDefault)
-import String exposing (toInt)
+import String exposing (toInt, slice)
 import Result exposing (Result, formatError)
 import Array exposing (Array, get)
 import Dict exposing (Dict)
@@ -246,16 +246,28 @@ playAbc m =
 
 -- VIEW
 
-viewError : Result ParseError AbcTune -> String
-viewError me =
-  case me of
-    Err e -> 
-      -- we start off with a dummy error message which is empty
-      if (isEmpty e.msgs) then
-        ""
-      else
-        parseError e 
-    _ -> ""
+viewError : Model -> Html
+viewError m =
+  let 
+    tuneResult = m.tuneResult
+  in
+    case tuneResult of
+      Err e -> 
+        -- we start off with a dummy error message which is empty
+        if (isEmpty e.msgs) then
+          text ""
+        else
+          let
+            startPhrase = Basics.max (e.position - 5) 0
+            errorPreface = "error: " ++ slice startPhrase e.position m.abc
+            errorChar = slice e.position (e.position + 1) m.abc
+          in
+            p [ ]
+                [ text errorPreface 
+                , span [ errorHighlightStyle ]
+                    [ text errorChar ]
+                ]
+      _ -> text ""
 
 view : Signal.Address Action -> Model -> Html
 view address model =
@@ -275,7 +287,7 @@ view address model =
              [
             
              textarea
-               ([ 
+               [ 
                placeholder "abc"
                , value model.abc
                , on "input" targetValue (\a -> Signal.message address (Abc a))
@@ -285,7 +297,7 @@ view address model =
                , autocomplete False
                , spellcheck False
                , autofocus True
-               ] ++ highlights model)
+               ]  
                [  ] 
             ]
            ,  div
@@ -299,7 +311,7 @@ view address model =
            ,  div 
              [  ] 
                [ 
-                 p [] [ text (viewError model.tuneResult) ] 
+                 p [] [ viewError model ] 
                ]
            ]
       ]
@@ -460,22 +472,12 @@ legendStyle =
    , ("padding", "0.3em 1em")
    ]
 
-highlights : Model -> List Attribute
-highlights model =
-  let 
-    tr = model.tuneResult
-  in
-    case tr of
-      Err pe ->
-        if (String.length model.abc > pe.position) then
-          [ property "selectionStart" (Json.string (toString pe.position))
-          , property "selectionEnd" (Json.string (toString (pe.position  + 1)))
-          , property "focus" (Json.null)
-          ]
-        else
-          []
-      _ ->
-        []
+
+errorHighlightStyle : Attribute
+errorHighlightStyle =
+  style
+    [ ("color", "red")
+    ]
 
 -- INPUTS
 
