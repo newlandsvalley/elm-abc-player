@@ -16,9 +16,10 @@ import SoundFont exposing (..)
 import Abc exposing (..)
 import AbcPerformance exposing (melodyFromAbcResult)
 import Abc.ParseTree exposing (AbcTune, PitchClass (..), Mode (..), Accidental (..), ModifiedKeySignature, KeySignature)
-import Abc.Canonical exposing (fromResult)
+import Abc.Canonical exposing (fromResult, fromTune)
 import Music.Notation exposing (getKeySig)
 import Music.Transposition exposing (transposeTo)
+import Music.Octave exposing (up, down)
 import Melody exposing (..)
 import Notable exposing (..)
 import Debug exposing (..)
@@ -72,6 +73,7 @@ type Action
     | Play     
     | PlayCompleted    
     | Transpose String
+    | MoveOctave Bool
     | TuneResult (Result ParseError AbcTune)
 
 update : Action -> Model -> (Model, Effects Action)
@@ -101,6 +103,12 @@ update action model =
     PlayCompleted -> ( { model | playing = False }, Effects.none)   
 
     Transpose s -> (transpose s model, Effects.none )
+
+    MoveOctave isUp -> 
+      if isUp then 
+        (moveOctave up model, Effects.none )
+      else
+        (moveOctave down model, Effects.none )
 
     TuneResult tr ->  ( { model | tuneResult = tr }, Effects.none) 
 
@@ -270,6 +278,18 @@ transpose kstr model =
               { model | abc = newAbc, tuneResult =  newTRCorrectedErr }
             _ -> model
       _ -> model
+
+{- move the tune up or down an octave -}
+moveOctave : (AbcTune -> AbcTune) -> Model -> Model
+moveOctave movefn model =
+   case model.tuneResult of
+     Ok tune ->
+       let
+         newTune = movefn tune
+         newAbc = fromTune newTune
+       in 
+        { model | abc = newAbc, tuneResult =  (Ok newTune) }            
+     _ -> model
       
 
 -- VIEW
@@ -305,7 +325,12 @@ view address model =
          h1 [ centreStyle ] [ text "ABC Editor" ]   
       ,  div [ leftPaneStyle ]
            [ span [ leftPanelWidgetStyle ] [text "Transpose to:"]
-           , transpositionMenu address model
+           , transpositionMenu address model 
+           , span [ leftPanelWidgetStyle ] [text "Move octave:"]     
+           , button ( buttonAttributes (areButtonsEnabled model) address (MoveOctave True))
+                       [ text "up" ]   
+           , button ( buttonAttributes (areButtonsEnabled model) address (MoveOctave False))
+                       [ text "down" ] 
            ]
       ,  div [ rightPaneStyle ]
          [
@@ -319,7 +344,7 @@ view address model =
                , on "input" targetValue (\a -> Signal.message address (Abc a))
                , taStyle
                , cols 70
-               , rows 10
+               , rows 16
                , autocomplete False
                , spellcheck False
                , autofocus True
