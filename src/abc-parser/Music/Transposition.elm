@@ -256,8 +256,14 @@ transposeNoteBy targetKs state note =
     srcNum = noteNumber explicitNote
     (targetNum, octaveIncrement) = noteIndex srcNum (state.keyDistance)
     (pc, acc) = pitchFromInt (fst targetKs) targetNum
+    -- if the original note had an explicit accidental then if the transposed note
+    -- is a natural, it must retain its explcit nature, otherwise, it can be implicit (i.e. Nothing)
     macc = case acc of
-      Natural -> Nothing
+      Natural -> 
+        if (isJust note.accidental) then
+          Just Natural
+        else
+          Nothing
       x -> Just x
     -- save the key class of the original untransposed note
     newState = addLocalAccidental note state
