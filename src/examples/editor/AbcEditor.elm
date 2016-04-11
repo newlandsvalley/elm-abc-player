@@ -304,7 +304,8 @@ view address model =
       [  
          h1 [ centreStyle ] [ text "ABC Editor" ]   
       ,  div [ leftPaneStyle ]
-           [ transpositionMenu address model
+           [ span [ leftPanelWidgetStyle ] [text "Transpose to:"]
+           , transpositionMenu address model
            ]
       ,  div [ rightPaneStyle ]
          [
@@ -357,6 +358,7 @@ transpositionMenu address m =
     case mKeySig of
       Just mks ->
         select [ leftPanelWidgetStyle
+               , (disabled m.playing)
                , on "change" targetValue (\a -> Signal.message address (Transpose a)) ] 
           (transpositionOptions mks)
       Nothing -> 
@@ -364,7 +366,7 @@ transpositionMenu address m =
                , (disabled True) 
                ] 
           [
-            option [] [text "no key signature" ]
+            option [] [text "not available" ]
           ]
 
 {- offer a menu of transposition options, appropriate to the 
@@ -377,32 +379,46 @@ transpositionOptions mks =
   let
     ks = fst mks
     mode = ks.mode    
+    allModes =    
+      [ option [ selectedKey ks (key C mode) ] 
+        [ displayKeySig (key C mode) ]
+      , option [ selectedKey ks (key D mode) ] 
+        [ displayKeySig (key D mode) ]
+      , option [ selectedKey ks (key E mode) ] 
+        [ displayKeySig (key E mode) ]
+      , option [ selectedKey ks (key F mode) ] 
+        [ displayKeySig (key F mode) ]
+      , option [ selectedKey ks (key G mode) ] 
+        [ displayKeySig (key G mode) ]
+      , option [ selectedKey ks (key A mode) ] 
+        [ displayKeySig (key A mode) ]
+      , option [ selectedKey ks (key B mode) ] 
+        [ displayKeySig (key B mode) ]
+      ]  
+    majorMode = 
+      [ option [ selectedKey ks (flatKey B Major) ] 
+        [ displayKeySig (flatKey B Major) ]
+      , option [ selectedKey ks (flatKey A Major) ] 
+        [ displayKeySig (flatKey A Major) ]
+      , option [ selectedKey ks (flatKey E Major) ]
+        [ displayKeySig (flatKey E Major) ]
+      ] 
+    minorMode =      
+      [ option [ selectedKey ks (sharpKey F Minor) ]
+        [ displayKeySig (sharpKey F Minor) ]
+      , option [ selectedKey ks (sharpKey C Minor) ] 
+        [ displayKeySig (sharpKey C Minor) ]
+      , option [ selectedKey ks (sharpKey G Minor) ] 
+        [ displayKeySig (sharpKey G Minor) ]
+      ]
   in
-    [ option [ selectedKey ks (key C mode) ] 
-       [ displayKeySig (key C mode) ]
-    , option [ selectedKey ks (sharpKey C mode) ] 
-       [ displayKeySig (sharpKey C mode) ]
-    , option [ selectedKey ks (key D mode) ] 
-       [ displayKeySig (key D mode) ]
-    , option [ selectedKey ks (flatKey E mode) ] 
-       [ displayKeySig (flatKey E mode) ]
-    , option [ selectedKey ks (key E mode) ] 
-       [ displayKeySig (key E mode) ]
-    , option [ selectedKey ks (key F mode) ] 
-       [ displayKeySig (key F mode) ]
-    , option [ selectedKey ks (sharpKey F mode) ] 
-       [ displayKeySig (sharpKey F mode) ]
-    , option [ selectedKey ks (key G mode) ] 
-       [ displayKeySig (key G mode) ]
-    , option [ selectedKey ks (flatKey A mode) ] 
-       [ displayKeySig (flatKey A mode) ]
-    , option [ selectedKey ks (key A mode) ] 
-       [ displayKeySig (key A mode) ]
-    , option [ selectedKey ks (flatKey B mode) ] 
-       [ displayKeySig (flatKey B mode) ]
-    , option [ selectedKey ks (key B mode) ] 
-       [ displayKeySig (key B mode) ]
-    ]
+    case mode of
+      Major -> allModes ++ majorMode
+      Minor -> allModes ++ minorMode
+      _ -> allModes
+
+
+ 
 
 {- return a (selected true) attriubute if the pattern key signature matches the target -}
 selectedKey : KeySignature -> KeySignature -> Attribute
@@ -463,6 +479,19 @@ leftPanelWidgetStyle =
       ("margin-left", "40px")
     , ("margin-top", "40px")
     ]
+
+{-
+leftPanelWidgetStyle : Attribute
+leftPanelWidgetStyle =
+  style
+    [  
+    {-    
+      ("margin-left", "40px")
+    , ("margin-top", "40px")
+    -}
+      ("float", "left")
+    ]
+-}
 
 {- style a centered component -}    
 centreStyle : Attribute

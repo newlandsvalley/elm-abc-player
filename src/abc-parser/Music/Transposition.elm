@@ -53,7 +53,7 @@ type alias TranspositionState =
 
 -- Exposed API
 
-{- work out the distance between the keys (target - source) measured in semitones 
+{-| work out the distance between the keys (target - source) measured in semitones 
    which must be in compatible modes  
 -} 
 keyDistance : ModifiedKeySignature -> ModifiedKeySignature -> Result String Int
@@ -67,7 +67,7 @@ keyDistance targetmks srcmks =
     else
       Ok (transpositionDistance (target.pitchClass, target.accidental) (src.pitchClass, src.accidental))
 
-{- transpose a note from its source key to its target -}
+{-| transpose a note from its source key to its target -}
 transposeNote : ModifiedKeySignature -> ModifiedKeySignature -> AbcNote -> Result String AbcNote
 transposeNote targetKey srcKey note =
   let

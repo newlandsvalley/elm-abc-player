@@ -270,6 +270,32 @@ chordalNoteDuration t note chord =
   (60.0 * (Ratio.toFloat t.unitNoteLength)* (Ratio.toFloat note) * (Ratio.toFloat chord)) / 
     ((Ratio.toFloat t.tempoNoteLength) * (Basics.toFloat t.bpm))
 
+{-| transpose a key signature by a given distance -}
+transposeKeySignatureBy : Int -> ModifiedKeySignature -> ModifiedKeySignature
+transposeKeySignatureBy i mks =
+  let
+    (ks, keyaccs) = mks
+    -- turn the key sig to a string pattern and look up its index
+    pattern = (toString ks.pitchClass) ++ (accidentalPattern ks.accidental)
+    index =  withDefault 0 (Dict.get pattern chromaticScaleDict)
+    newIndex = (notesInChromaticScale + index + i) % notesInChromaticScale
+    -- keep hold of the sharp / flat nature of the original scale
+    scale =
+      if (isCOrSharpKey ks) then
+        sharpScale
+      else
+        flatScale
+    -- now look up the transposed key at the new index
+    (pc, ma) = 
+      getAt scale newIndex
+        |> withDefault (C, Nothing)
+    -- modify the key accidentals likewise
+    accs = List.map (transposeKeyAccidentalBy i) keyaccs
+    -- build the most likely enharmonic equivalent - don't use bizarre keys
+    newks = equivalentEnharmonicKeySig pc ma ks.mode
+  in
+    ( newks, accs )
+
 -- implementation
 
 {- works from C major up to B major but not beyond 
@@ -334,7 +360,7 @@ extremeFlatScale =
      List.map f flatScale
 
 
-{- enharmonic equivalence - don't use bizarre sharp keys when we have reasonable flat ones -}
+{- enharmonic equivalence of key classes - don't use bizarre sharp keys when we have reasonable flat ones -}
 equivalentEnharmonic : KeyClass -> KeyClass
 equivalentEnharmonic k = 
   case k of 
@@ -343,6 +369,23 @@ equivalentEnharmonic k =
    (D, Just Sharp) -> (E, Just Flat)
    (G, Just Sharp) -> (A, Just Flat)
    _ -> k
+
+{- enharmonic equivalence of full key signatures - don't use bizarre minor flat keys when we have reasonable sharp ones 
+   and vice versa.  Check both Major and Monor key signatures.
+-}
+equivalentEnharmonicKeySig : PitchClass -> Maybe Accidental -> Mode -> KeySignature
+equivalentEnharmonicKeySig pc ma m = 
+  case (pc, ma, m) of 
+   -- major key signatures
+   ( A, Just Sharp, Major ) -> { pitchClass = B, accidental = Just Flat, mode = Major }
+   ( D, Just Sharp, Major ) -> { pitchClass = E, accidental = Just Flat, mode = Major }
+   ( G, Just Sharp, Major ) -> { pitchClass = A, accidental = Just Flat, mode = Major } 
+   -- minor key signatures
+   ( G, Just Flat, Minor ) -> { pitchClass = F, accidental = Just Sharp, mode = Minor }
+   ( D, Just Flat, Minor ) -> { pitchClass = C, accidental = Just Sharp, mode = Minor }
+   ( A, Just Flat, Minor ) -> { pitchClass = G, accidental = Just Sharp, mode = Minor }
+   _ -> { pitchClass = pc, accidental = ma, mode = m }
+
 
 
 majorIntervals : Intervals
@@ -501,27 +544,7 @@ accidentalPattern ma =
   in
     withDefault "" (Maybe.map f ma)
 
-transposeKeySignatureBy : Int -> ModifiedKeySignature -> ModifiedKeySignature
-transposeKeySignatureBy i mks =
-  let
-    (ks, keyaccs) = mks
-    -- turn the key sig to a string pattern and look up its index
-    pattern = (toString ks.pitchClass) ++ (accidentalPattern ks.accidental)
-    index =  withDefault 0 (Dict.get pattern chromaticScaleDict)
-    -- keep hold of the sharp / flat nature of the original scale
-    scale =
-      if (isCOrSharpKey ks) then
-        sharpScale
-      else
-        flatScale
-    -- now look up the transposed key at the new index
-    (pc, ma) = 
-      getAt scale (index + i)
-        |> withDefault (C, Nothing)
-    -- modify the key accidentals likewise
-    accs = List.map (transposeKeyAccidentalBy i) keyaccs
-  in
-    ( { pitchClass = pc, accidental = ma, mode = ks.mode }, accs )
+
 
 {- transpose a key accidental  (a key signature modifier)
    not finished
