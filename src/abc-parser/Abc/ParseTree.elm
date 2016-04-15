@@ -14,6 +14,7 @@ module Abc.ParseTree
     , KeySignature
     , ModifiedKeySignature
     , KeyAccidental
+    , KeySet
     , MeterSignature
     , TempoSignature
     , TupletSignature
@@ -45,6 +46,7 @@ module Abc.ParseTree
     , KeySignature
     , ModifiedKeySignature
     , KeyAccidental
+    , KeySet
     , MeterSignature
     , TempoSignature
     , TupletSignature
@@ -55,7 +57,7 @@ module Abc.ParseTree
     , Broken
 
 # Functions  (constants)
-    middlecOctave
+@docs middlecOctave
 
 -}
 
@@ -187,9 +189,10 @@ type alias ModifiedKeySignature =
 
 {-| a Key Accidental (A modification to a standard key for one pitch in the scale) -}
 type alias KeyAccidental = 
-  { pitchClass : PitchClass
-  , accidental : Accidental
-  } 
+  ( PitchClass, Accidental ) 
+  
+{-| a set of accidentals within a key signature -}
+type alias KeySet = List KeyAccidental  
 
 {-| a Meter Signature - e.g. 3/4 -}
 type alias MeterSignature = (Int, Int)

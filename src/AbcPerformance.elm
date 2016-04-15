@@ -27,12 +27,13 @@ module AbcPerformance (  fromAbc
 import Abc.ParseTree exposing (..)
 import Abc exposing (ParseError)
 import Music.Notation exposing (..)
+import Music.Accidentals exposing (..)
 import Melody exposing (..)
 import Repeats exposing (..)
 import String exposing (fromChar, toUpper)
 import Ratio exposing (Rational, over, fromInt, toFloat, add)
 import Maybe exposing (withDefault)
-import Debug exposing (..)
+
 
 
 type alias TranslationState = 
@@ -68,32 +69,13 @@ defaultBar i =
   {  number = i
   ,  repeat = Nothing
   ,  iteration = Nothing
-  ,  accidentals = []   
+  ,  accidentals = Music.Accidentals.empty
   ,  notes = []
   }
 
 isEmptyBar : ABar -> Bool
 isEmptyBar b =
   List.length b.notes == 0
-
--- get the tempo from the tune header
-{-
-getHeaderTempo : AbcTempo -> TuneHeaders -> AbcTempo
-getHeaderTempo a =
-  let
-    f h acc = 
-      case h of
-        UnitNoteLength d ->
-           { acc | unitNoteLength = d }
-        Tempo t ->
-          let 
-            tnl = List.foldl Ratio.add (fromInt 0) t.noteLengths
-          in
-           { acc | tempoNoteLength = tnl, bpm = t.bpm }
-        _ -> acc       
-  in
-    List.foldr f a
--}
 
 {- update the state of the player when we come across a header (either at the start or inline)
    which affects the tune tempo or the pitch of a note (i.e. they key)
@@ -117,33 +99,27 @@ updateState h acc =
     _ -> acc       
 
 {- we need to take note of any accidentals so far in the bar because these may influence
-   later notes in that bar.  Build the KeyClass for the accidental of the pitch class in question
+   later notes in that bar.  Build the KeyAccidental for the accidental of the pitch class in question
    and add it to the list
 -}
-addNoteToBarAccidentals : SingleNote -> KeySet -> KeySet
-addNoteToBarAccidentals n ks =
+addNoteToBarAccidentals : SingleNote -> Accidentals -> Accidentals
+addNoteToBarAccidentals n accs =
   case (n.pc, n.accidental) of
     (Just pitchClass, Just acc) ->
-      let
-        keyClass = (pitchClass, n.accidental)
-      in
-        if not (List.member keyClass ks) then
-          keyClass :: ks
-        else
-          ks
-    _ -> ks
+      Music.Accidentals.add pitchClass acc accs
+    _ -> accs
 
 {- ditto for note events (single notes or chords) -}
-addNoteEventToBarAccidentals :  NoteEvent -> KeySet -> KeySet
-addNoteEventToBarAccidentals ne ks =
+addNoteEventToBarAccidentals :  NoteEvent -> Accidentals -> Accidentals
+addNoteEventToBarAccidentals ne accs =
   case ne of
-   ANote note _ -> addNoteToBarAccidentals note ks 
-   AChord ns -> List.foldl (addNoteToBarAccidentals) ks ns
+   ANote note _ -> addNoteToBarAccidentals note accs 
+   AChord ns -> List.foldl (addNoteToBarAccidentals) accs ns
 
 {- ditto for lists of note events -}
-addNoteEventsToBarAccidentals :  List NoteEvent -> KeySet -> KeySet
-addNoteEventsToBarAccidentals nes ks =
-  List.foldl (addNoteEventToBarAccidentals) ks nes
+addNoteEventsToBarAccidentals :  List NoteEvent -> Accidentals -> Accidentals
+addNoteEventsToBarAccidentals nes accs =
+  List.foldl (addNoteEventToBarAccidentals) accs nes
     
 {- add a note event to the state - add the note to the growing list of notes in the current bar
    and if the note has an explicit accidental marker, add it to the list of accidentals
@@ -178,9 +154,9 @@ buildNewBar nextBarNumber abcBar lastBar =
     if (isEmptyBar lastBar) then
       case (lastBar.repeat, abcBar.repeat) of
         (Just End, Just Begin) ->
-          log "Just End, Just Begin" { nextBar | repeat = Just BeginAndEnd, iteration = abcBar.iteration }
+          { nextBar | repeat = Just BeginAndEnd, iteration = abcBar.iteration }
         (Just x, _) ->
-           log "Just x" { nextBar | repeat = Just x, iteration = abcBar.iteration }
+          { nextBar | repeat = Just x, iteration = abcBar.iteration }
         _ ->
           { nextBar | repeat = abcBar.repeat, iteration = abcBar.iteration }
     else
@@ -192,7 +168,7 @@ translateNoteSequence : Bool -> TranslationState -> List AbcNote -> Maybe NoteDu
 translateNoteSequence isSeq state notes maybeChordDur =
   let
     -- a chord can have a duration over and above that of any individual note in the chord
-    chordDuration = 
+    chordDuration =
       case maybeChordDur of
         Nothing -> fromInt 1
         Just chordDur -> chordDur
@@ -292,7 +268,7 @@ translateMusic m acc =
               melodyLine
             else
               let
-                rb = log "the next bar" state.thisBar
+                rb = state.thisBar
               in
                 state.thisBar :: melodyLine
           -- don't increment the bar number if it's an empty bar
@@ -372,7 +348,8 @@ fromAbc tune =
           else
             reverseMelody (state.thisBar :: music)
         -- finalise the repeat state with the last bar
-        repeatState = finalise (log "last bar" state.thisBar) (log "repeat state" state.repeatState)
+        repeatState = finalise state.thisBar state.repeatState
+        -- repeatState = finalise (log "last bar" state.thisBar) (log "repeat state" state.repeatState)
      in
        (fullMusic, (List.reverse repeatState.repeats))
 

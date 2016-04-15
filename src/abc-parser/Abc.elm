@@ -285,8 +285,8 @@ keySignature =
 keyAccidental : Parser KeyAccidental
 keyAccidental = buildKeyAccidental <$> accidental <*> pitch
 
--- of which there may be zero or more, separated by spaces
-keyAccidentals : Parser (List KeyAccidental)
+-- of which there may be zero or more, separated by spaces (KeySet is a List of Key Accidentals)
+keyAccidentals : Parser KeySet
 keyAccidentals = many (space *> keyAccidental)
 
 mode : Parser Mode
@@ -888,7 +888,7 @@ buildKeyAccidental a pitchStr =
   let
     pc = lookupPitch pitchStr
   in
-    { accidental = a, pitchClass = pc }
+    (pc, a)
 
 buildChord : List AbcNote -> Maybe Rational ->  AbcChord
 buildChord ns ml = 

@@ -37,24 +37,25 @@ Chord symbols will be lost on transposition.
 import Dict exposing (Dict, fromList, get)
 import Maybe exposing (withDefault, oneOf)
 import Maybe.Extra exposing (isJust)
-import Result exposing (Result)
+-- import Result exposing (Result)
 import Abc.ParseTree exposing (..)
-import Music.Notation exposing (KeyClass, KeySet, notesInChromaticScale, isCOrSharpKey, getKeySig, accidentalImplicitInKey, accidentalInKeySet, transposeKeySignatureBy)
+import Music.Notation exposing (notesInChromaticScale, isCOrSharpKey, getKeySig, accidentalImplicitInKey, transposeKeySignatureBy)
+import Music.Accidentals exposing (..)
 
 import Debug exposing (..)
 
 type alias TranspositionState = 
-  { keyDistance : Int                -- semitone distance between keys
-  , srcmks : ModifiedKeySignature    -- source key signature
-  , localAccidentals : KeySet        -- any accidental defined locally to the current bar
+  { keyDistance : Int                  -- semitone distance between keys
+  , srcmks : ModifiedKeySignature      -- source key signature
+  , sourceBarAccidentals : Accidentals -- any accidental defined locally to the current bar in the tune source
   }
 
 
 
 -- Exposed API
 
-{-| work out the distance between the keys (target - source) measured in semitones 
-   which must be in compatible modes  
+{-| work out the distance between the keys (target - source) measured in semitones. 
+   Keys must be in compatible modes  
 -} 
 keyDistance : ModifiedKeySignature -> ModifiedKeySignature -> Result String Int
 keyDistance targetmks srcmks =
@@ -77,7 +78,7 @@ transposeNote targetKey srcKey note =
       Err e -> Err e
       Ok d  -> 
         let
-          transpositionState = { keyDistance = d, srcmks = srcKey, localAccidentals = [] }
+          transpositionState = { keyDistance = d, srcmks = srcKey, sourceBarAccidentals = Music.Accidentals.empty }
           (transposedNote, _) = (transposeNoteBy targetKey transpositionState note)
         in
           Ok transposedNote
@@ -100,7 +101,7 @@ transposeTo targetmks t =
           Ok t
         else
           let
-            transpositionState = { keyDistance = d, srcmks = mks, localAccidentals = [] }
+            transpositionState = { keyDistance = d, srcmks = mks, sourceBarAccidentals = Music.Accidentals.empty }
           in
             Ok (transposeTune targetmks transpositionState t)
 
@@ -194,7 +195,7 @@ transposeMusic targetks state m =
     ChordSymbol s -> (Ignore, state)
 
     -- new bar, initialise accidentals list
-    Barline b -> (Barline b, { state | localAccidentals = [] })
+    Barline b -> (Barline b, { state | sourceBarAccidentals = Music.Accidentals.empty })
 
     _ -> (m, state)
 
@@ -244,7 +245,7 @@ transposeNoteBy targetKs state note =
   let
     -- make any implicit accidental explicit in the note to be transposed if it's not marked as an accidental
     inKeyAccidental = accidentalImplicitInKey note (state.srcmks)
-    inBarAccidental = localAccidental note state
+    inBarAccidental = lookupNote note state.sourceBarAccidentals
     implicitAccidental = oneOf [inKeyAccidental, inBarAccidental]
     explicitNote = 
       if (isJust note.accidental) then
@@ -252,7 +253,7 @@ transposeNoteBy targetKs state note =
       else 
         { note | accidental = implicitAccidental }
     -- _ = log "note to transpose" note
-    -- _ = log "local accidentals" state.localAccidentals
+    -- _ = log "local accidentals" state.sourceBarAccidentals
     srcNum = noteNumber explicitNote
     (targetNum, octaveIncrement) = noteIndex srcNum (state.keyDistance)
     (pc, acc) = pitchFromInt (fst targetKs) targetNum
@@ -266,33 +267,22 @@ transposeNoteBy targetKs state note =
           Nothing
       x -> Just x
     -- save the key class of the original untransposed note
-    newState = addLocalAccidental note state
+    newState = addSourceBarAccidental note state
   in
     ( { note | pitchClass = pc, accidental = macc, octave = note.octave + octaveIncrement }, newState)
 
 {- we need to take note of any accidentals so far in the bar because these may influence
-   later notes in that bar.  If the key class defines an accidental, add it to the key set if it's new.
+   later notes in that bar.  If the note uses an accidental, add it to the key set if it's new.
 -}
-addLocalAccidental : AbcNote -> TranspositionState -> TranspositionState
-addLocalAccidental n state =
+addSourceBarAccidental : AbcNote -> TranspositionState -> TranspositionState
+addSourceBarAccidental n state =
   case n.accidental of
     Just acc ->
       let
-        keyClass = (n.pitchClass, n.accidental)
-        ks = state.localAccidentals 
+         newSourceAccs = Music.Accidentals.add n.pitchClass acc state.sourceBarAccidentals
       in
-        if not (List.member keyClass ks) then
-          { state | localAccidentals = keyClass :: ks }
-        else
-          state
+        { state | sourceBarAccidentals = newSourceAccs }
     _ -> state
-
-{-| return an accidental if it has been set locally (i.e. earlier in the bar)
-    and thus is inherited
--}
-localAccidental : AbcNote -> TranspositionState -> Maybe Accidental
-localAccidental n state  =
-  accidentalInKeySet n (state.localAccidentals)
 
 
 {- create a list of pairs which should match every possible

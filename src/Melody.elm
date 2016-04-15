@@ -13,8 +13,9 @@ module Melody ( NoteEvent (..)
 
 -}
 
-import Abc.ParseTree exposing (PitchClass, Accidental, Repeat)
-import Music.Notation exposing (NoteTime, KeySet, MidiPitch)
+import Abc.ParseTree exposing (PitchClass, Accidental, KeySet, Repeat)
+import Music.Notation exposing (NoteTime, MidiPitch)
+import Music.Accidentals exposing (Accidentals)
 
 {-| an individual Note (no pitch class implies a rest) -}    
 type alias SingleNote = 
@@ -31,11 +32,11 @@ type NoteEvent =
    
 {- A Bar -}
 type alias ABar =
-  {  number : Int             -- sequential from zero
-  ,  repeat : Maybe Repeat    -- the bar owns a repeat of some kind
-  ,  iteration : Maybe Int    -- the bar has an iteration marker  (|1  or |2 etc)
-  ,  accidentals : KeySet     -- any such notes marked explicitly as accidentals (updated in sequence)
-  ,  notes : List NoteEvent   -- the notes in the bar
+  {  number : Int               -- sequential from zero
+  ,  repeat : Maybe Repeat      -- the bar owns a repeat of some kind
+  ,  iteration : Maybe Int      -- the bar has an iteration marker  (|1  or |2 etc)
+  ,  accidentals : Accidentals  -- any notes marked explicitly as accidentals in the bar (updated in sequence)
+  ,  notes : List NoteEvent     -- the notes in the bar
   }
 
 {- the overall melody -}

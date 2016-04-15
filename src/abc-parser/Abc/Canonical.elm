@@ -15,7 +15,7 @@ module Abc.Canonical
 import Abc.ParseTree exposing (..)
 import Ratio exposing (Rational, numerator, denominator)
 import Maybe exposing (withDefault)
-import Music.Notation exposing (KeySet, getKeySet, modifiedKeySet, naturaliseIfInKeySet, sharpenFlatEnharmonic)
+import Music.Notation exposing (getKeySet, modifiedKeySet, naturaliseIfInKeySet, sharpenFlatEnharmonic)
 import String exposing (fromChar, fromList, repeat, trimRight, toLower)
 
 enquote : String -> String
@@ -137,7 +137,10 @@ key k =
 
 keyAccidental : KeyAccidental -> String
 keyAccidental ka =
-  accidental ka.accidental ++ toLower (toString ka.pitchClass)
+  let
+    (pc, acc) = ka
+  in
+    accidental acc ++ toLower (toString pc)
 
 keyAccidentals : List KeyAccidental -> String
 keyAccidentals = 
