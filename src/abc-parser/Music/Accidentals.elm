@@ -4,7 +4,7 @@ module Music.Accidentals
   , add
   , fromKeySet
   , lookup
-  , lookupNote
+  , member
   ) where
   
   
@@ -25,12 +25,14 @@ module Music.Accidentals
     , add
     , fromKeySet
     , lookup
-    , lookupNote
+    , member
 
 -}
 
 import Abc.ParseTree exposing (AbcNote, PitchClass (..), Accidental (..), KeyAccidental, KeySet)
 import Dict exposing (Dict, fromList, get)
+
+import Debug exposing (..)
 
 {-| A set of accidentals,  String is a proxy for PitchClass -}
 type alias Accidentals = Dict String Accidental
@@ -59,8 +61,25 @@ fromKeySet ks =
 lookup : PitchClass -> Accidentals -> Maybe Accidental
 lookup pc accs =
   Dict.get (toString pc) accs
+{-
+  let
+    _ = log "lookup" pc
+    _ = log "in" accs
+    res = log "result" (Dict.get (toString pc) accs)
+  in
+    res
+-}
 
-{- lookup a note and see if its pitch class exists in the Accidentals set -}
-lookupNote : AbcNote -> Accidentals -> Maybe Accidental
-lookupNote note =
-  lookup note.pitchClass
+{-| lookup a KeyAccidental and see if it's a member of the Accidentals set  
+    (i.e. the value of the Accidental matches for the supplied pitch) 
+-}
+member : KeyAccidental -> Accidentals -> Bool
+member ka accs =
+  let
+    (pc, acc) = ka
+    macc = Dict.get (toString pc) accs
+  in
+    (Just acc) == macc
+    
+   
+

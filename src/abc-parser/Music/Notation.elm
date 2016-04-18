@@ -2,16 +2,17 @@ module Music.Notation
   ( MidiPitch
   , AbcTempo
   , NoteTime
+  , DiatonicScale
   , notesInChromaticScale
   , keySet
   , modifiedKeySet
   , getKeySet
+  , inKeySet
   , getKeySig
-  , scale
+  , diatonicScale
+  , inScale
   , isCOrSharpKey
   , accidentalImplicitInKey
-  , naturaliseIfInKeySet
-  , sharpenFlatEnharmonic
   , dotFactor
   , toMidiPitch
   , noteDuration
@@ -24,19 +25,19 @@ module Music.Notation
 # Definition
 
 # Data Types
-@docs MidiPitch, AbcTempo, NoteTime
+@docs MidiPitch, AbcTempo, NoteTime, DiatonicScale
 
 # Functions
 @docs notesInChromaticScale
     , keySet
     , modifiedKeySet
     , getKeySet
+    , inKeySet
     , getKeySig
-    , scale   
+    , diatonicScale   
+    , inScale
     , isCOrSharpKey
     , accidentalImplicitInKey
-    , naturaliseIfInKeySet
-    , sharpenFlatEnharmonic
     , dotFactor
     , toMidiPitch
     , noteDuration  
@@ -58,9 +59,12 @@ import Music.Accidentals exposing (..)
 
 import Debug exposing (..)
 
-type alias ChromaticScale = List KeyAccidental
 
-type alias Scale = List KeyAccidental
+{-| a diatonic scale presented as a list of notes in the scale -}
+type alias DiatonicScale = List KeyAccidental
+
+{- a chromatic (11-note) scale -}
+type alias ChromaticScale = List KeyAccidental
 
 type alias Intervals = List Int
 
@@ -86,7 +90,7 @@ notesInChromaticScale = 12
 {-| return the set of keys (pitch classes with accidental) that comprise the key signature -}
 keySet : KeySignature -> KeySet
 keySet ks =  
-  scale ks
+  diatonicScale ks
      |> List.filter accidentalKey
 
 {-| return the set of keys (pitch classes with accidental) that comprise a modified key signature -}
@@ -110,6 +114,11 @@ getKeySet t =
     Just ksig -> modifiedKeySet ksig
     Nothing -> []
 
+{-| return True if the KeyAccidental is in the KeySet -}
+inKeySet : KeyAccidental -> KeySet -> Bool
+inKeySet ka ks =
+  List.member ka ks
+
 {-| get the key signature (if any) from the tune -}
 getKeySig : AbcTune -> Maybe ModifiedKeySignature
 getKeySig t =
@@ -125,9 +134,9 @@ getKeySig t =
      |> join
 
 
-{-| return the set of keys (pitch classes and accidental) that comprise a complete 11-note scale -}
-scale : KeySignature -> Scale
-scale ks =
+{-| return the set of keys (pitch classes and accidental) that comprise a diatonic scale -}
+diatonicScale : KeySignature -> DiatonicScale
+diatonicScale ks =
   let 
     accidental = 
       case ks.accidental of
@@ -143,6 +152,10 @@ scale ks =
       m ->
         modalScale target ks.mode
 
+{-| return True if the KeyAccidental is in the (diatonic) scale -}
+inScale : KeyAccidental -> DiatonicScale -> Bool
+inScale ka s =
+  List.member ka s
 
 {-| return True if the key signature is a sharp key or a simple C Major key -}
 isCOrSharpKey : KeySignature -> Bool
@@ -157,45 +170,14 @@ isCOrSharpKey ksig =
 
 {-| return an accidental if it is implicitly there in the (modified) key signature 
     attached to the pitch class of the note -}
-accidentalImplicitInKey : AbcNote -> ModifiedKeySignature -> Maybe Accidental
-accidentalImplicitInKey n mks  =
+accidentalImplicitInKey : PitchClass -> ModifiedKeySignature -> Maybe Accidental
+accidentalImplicitInKey pc mks  =
     let
       keyset = modifiedKeySet mks
       accidentals = Music.Accidentals.fromKeySet keyset
     in
-      lookupNote n accidentals
+      lookup pc accidentals
     -- accidentalInKeySet n (modifiedKeySet mks)
-
-{-| If the actual (PitchClass, maybe Accidental) within the note exists in the key set, 
-   return the note with the pitch naturalised, otherwise leave it intact.
-   This is the reverse operation to accidentalInKeySet and is used when looking up a note
-   which is explictly marked with an accidental in order to display it as text
-   because the accidental is implied by the key signature
--}
-naturaliseIfInKeySet : AbcNote -> KeySet -> AbcNote
-naturaliseIfInKeySet n ks =
-  case n.accidental of
-    Just a ->    
-       if (List.member (n.pitchClass, a) ks) then
-         {n | accidental = Nothing }
-       else
-         n
-    Nothing -> n    
-
-
-{-| enharmonic equivalence for flattened notes
-   We'll (for the moment) use the convention that most flat accidentals
-   are presented in sharpened form
- -}
-sharpenFlatEnharmonic : AbcNote -> AbcNote
-sharpenFlatEnharmonic n = 
-  let 
-    target = (n.pitchClass, n.accidental)
-  in
-    case target of 
-      (G, Just Flat) -> { n | pitchClass = F, accidental = Just Sharp }
-      (D, Just Flat) -> { n | pitchClass = C, accidental = Just Sharp } 
-      _ -> n
 
 {- modify a key set with a new accidental -}
 modifyKeySet : KeyAccidental -> KeySet -> KeySet
@@ -446,7 +428,7 @@ lookUp s i =
       |> withDefault (C, Natural)
     
 -- provide the Major scale for the pitch class  
-majorScale : KeyAccidental -> Scale
+majorScale : KeyAccidental -> DiatonicScale
 majorScale target =
   let
     chromaticScale =
@@ -463,7 +445,7 @@ majorScale target =
     List.map f (partialSum majorIntervals)
 
 -- provide a Modal scale for the pitch class
-modalScale : KeyAccidental -> Mode -> Scale
+modalScale : KeyAccidental -> Mode -> DiatonicScale
 modalScale target mode =
   let
     distance = case mode of  -- the distance to move right round the major scale
@@ -505,8 +487,8 @@ isFlatMajorKey target =
 midiPitchOffset : AbcNote -> ModifiedKeySignature -> Accidentals -> Int
 midiPitchOffset n mks barAccidentals =
   let 
-    inBarAccidental = Music.Accidentals.lookupNote n barAccidentals
-    inKeyAccidental = accidentalImplicitInKey n mks
+    inBarAccidental = Music.Accidentals.lookup n.pitchClass barAccidentals
+    inKeyAccidental = accidentalImplicitInKey n.pitchClass mks
     -- look first for an explicit note accidental, then for an explicit for the same note that occurred earlier in the bar and 
     -- finally look for an implicit accidental attached to this key signature
     maybeAccidental = oneOf [n.accidental, inBarAccidental, inKeyAccidental]

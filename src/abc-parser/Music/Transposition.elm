@@ -29,7 +29,7 @@ Chord symbols will be lost on transposition.
 {- A parse tree score contains implicit accidentals.  Very often, the source text will not mark them but assume that they
    are implicit in the key signature.  They also may appear 'locally' - i.e. earlier in the bar and thus inherited.
    In order for the transposition process to work, all accidentals must be made explicit during transposition and then 
-   (perhaps) made implicit when written out to text.
+   made implicit when written out to text if they are defined earlier in the bar or are defined in the key signature.
 
    This means we have to thread state through the transposition and hence use folds rather than maps
 -}
@@ -37,19 +37,21 @@ Chord symbols will be lost on transposition.
 import Dict exposing (Dict, fromList, get)
 import Maybe exposing (withDefault, oneOf)
 import Maybe.Extra exposing (isJust)
--- import Result exposing (Result)
 import Abc.ParseTree exposing (..)
-import Music.Notation exposing (notesInChromaticScale, isCOrSharpKey, getKeySig, accidentalImplicitInKey, transposeKeySignatureBy)
+import Music.Notation exposing (..)
 import Music.Accidentals exposing (..)
 
 import Debug exposing (..)
 
 type alias TranspositionState = 
-  { keyDistance : Int                  -- semitone distance between keys
-  , srcmks : ModifiedKeySignature      -- source key signature
+  { keyDistance : Int                  -- semitone distance between keys - may be positive or negative
+  , sourcemks : ModifiedKeySignature   -- source key signature
   , sourceBarAccidentals : Accidentals -- any accidental defined locally to the current bar in the tune source
+  , targetmks : ModifiedKeySignature   -- target key signature
+  , targetKeySet : KeySet              -- the set of accidental keys in the target key signature
+  , targetScale : DiatonicScale        -- diatonic scale in the target key
+  , targetBarAccidentals : Accidentals -- any accidental defined locally to the current bar in the tune target
   }
-
 
 
 -- Exposed API
@@ -70,16 +72,24 @@ keyDistance targetmks srcmks =
 
 {-| transpose a note from its source key to its target -}
 transposeNote : ModifiedKeySignature -> ModifiedKeySignature -> AbcNote -> Result String AbcNote
-transposeNote targetKey srcKey note =
+transposeNote targetmks srcKey note =
   let
-    rdist = keyDistance targetKey srcKey
+    rdist = keyDistance targetmks srcKey
   in
     case rdist of
       Err e -> Err e
       Ok d  -> 
         let
-          transpositionState = { keyDistance = d, srcmks = srcKey, sourceBarAccidentals = Music.Accidentals.empty }
-          (transposedNote, _) = (transposeNoteBy targetKey transpositionState note)
+          transpositionState = 
+            { keyDistance = d
+            , sourcemks = srcKey
+            , sourceBarAccidentals = Music.Accidentals.empty
+            , targetmks = targetmks
+            , targetKeySet = modifiedKeySet targetmks
+            , targetScale = diatonicScale (fst targetmks)
+            , targetBarAccidentals = Music.Accidentals.empty
+            }
+          (transposedNote, _) = (transposeNoteBy transpositionState note)
         in
           Ok transposedNote
 
@@ -101,29 +111,37 @@ transposeTo targetmks t =
           Ok t
         else
           let
-            transpositionState = { keyDistance = d, srcmks = mks, sourceBarAccidentals = Music.Accidentals.empty }
+            transpositionState = 
+             { keyDistance = d
+             , sourcemks = mks
+             , sourceBarAccidentals = Music.Accidentals.empty
+             , targetmks = targetmks
+             , targetKeySet = modifiedKeySet targetmks
+             , targetScale = diatonicScale (fst targetmks)
+             , targetBarAccidentals = Music.Accidentals.empty 
+             }
           in
-            Ok (transposeTune targetmks transpositionState t)
+            Ok (transposeTune transpositionState t)
 
 -- Implementation
-transposeTune : ModifiedKeySignature -> TranspositionState -> AbcTune -> AbcTune
-transposeTune targetks state t =
+transposeTune : TranspositionState -> AbcTune -> AbcTune
+transposeTune state t =
   let
     (headers, body) = t
-    newHeaders = replaceKeyHeader targetks headers
+    newHeaders = replaceKeyHeader state.targetmks headers
   in
-    (newHeaders, (transposeTuneBody targetks state body))
+    (newHeaders, (transposeTuneBody state body))
 
 {- transpose the tune body.  We need to thread state through the tune in case there's an inline
    information header which changes key part way through the tune
 -}
-transposeTuneBody : ModifiedKeySignature -> TranspositionState -> TuneBody -> TuneBody
-transposeTuneBody targetks state body =
+transposeTuneBody : TranspositionState -> TuneBody -> TuneBody
+transposeTuneBody state body =
   let     
     f n acc = 
       let 
         (bs, s0) = acc
-        (b1, s1) = transposeBodyPart targetks s0 n
+        (b1, s1) = transposeBodyPart s0 n
       in
        ( b1 :: bs, s1)
   in
@@ -132,13 +150,13 @@ transposeTuneBody targetks state body =
     in
       List.reverse tb
 
-transposeBodyPart : ModifiedKeySignature -> TranspositionState -> BodyPart -> (BodyPart, TranspositionState)
-transposeBodyPart targetks state bp =
+transposeBodyPart : TranspositionState -> BodyPart -> (BodyPart, TranspositionState)
+transposeBodyPart state bp =
   case bp of
     -- just transpose the score
     Score ms -> 
       let 
-        (ms1, s1) = transposeMusicList targetks state ms
+        (ms1, s1) = transposeMusicList state ms
       in
         (Score ms1, s1)
     -- transpose any Key header found inline
@@ -147,47 +165,56 @@ transposeBodyPart targetks state bp =
         Key mks -> 
           let
             newmks = transposeKeySignatureBy state.keyDistance mks
+            -- newmks = log "\r\nkey change\r\n" (transposeKeySignatureBy state.keyDistance mks)
           in
-           (BodyInfo (Key newmks), {state | srcmks = mks })
+           (BodyInfo (Key newmks), 
+             {state | sourcemks = mks
+                    , sourceBarAccidentals = Music.Accidentals.empty
+                    , targetmks = newmks
+                    , targetKeySet = modifiedKeySet newmks
+                    , targetScale = diatonicScale (fst newmks)
+                    , targetBarAccidentals = Music.Accidentals.empty 
+             }
+           )
         _ -> (bp, state)
 
-transposeMusic : ModifiedKeySignature -> TranspositionState -> Music -> (Music, TranspositionState)
-transposeMusic targetks state m =
+transposeMusic : TranspositionState -> Music -> (Music, TranspositionState)
+transposeMusic state m =
   case m of
     Note n -> 
       let 
-        (tn1, s1) = transposeNoteBy targetks state n
+        (tn1, s1) = transposeNoteBy state n
       in
         (Note tn1, s1)
 
     BrokenRhythmPair n1 b n2 ->  
       let
-        (tn1, s1) = transposeNoteBy targetks state n1
-        (tn2, s2) = transposeNoteBy targetks s1 n2
+        (tn1, s1) = transposeNoteBy state n1
+        (tn2, s2) = transposeNoteBy s1 n2
       in
         (BrokenRhythmPair tn1 b tn2, s2)
 
     Tuplet ts ns -> 
       let 
-        (ns1, s1) = transposeNoteList targetks state ns
+        (ns1, s1) = transposeNoteList state ns
       in 
         (Tuplet ts ns1, s1)
  
     GraceNote b m -> 
       let 
-        (m1, s1) = transposeMusic targetks state m
+        (m1, s1) = transposeMusic state m
       in 
         (GraceNote b m1, s1)
 
     Chord c -> 
       let 
-        (tc, s1) = transposeChord targetks state c
+        (tc, s1) = transposeChord state c
       in
         (Chord tc, s1)
 
     NoteSequence ms -> 
       let 
-        (ms1, s1) = transposeMusicList targetks state ms
+        (ms1, s1) = transposeMusicList state ms
       in 
         (NoteSequence ms1, s1)
 
@@ -195,17 +222,17 @@ transposeMusic targetks state m =
     ChordSymbol s -> (Ignore, state)
 
     -- new bar, initialise accidentals list
-    Barline b -> (Barline b, { state | sourceBarAccidentals = Music.Accidentals.empty })
+    Barline b -> (Barline b, { state | sourceBarAccidentals = Music.Accidentals.empty, targetBarAccidentals = Music.Accidentals.empty })
 
     _ -> (m, state)
 
-transposeMusicList : ModifiedKeySignature -> TranspositionState -> List Music -> (List Music, TranspositionState)
-transposeMusicList targetks state ms =
+transposeMusicList : TranspositionState -> List Music -> (List Music, TranspositionState)
+transposeMusicList state ms =
   let
      f n acc = 
        let 
          (ns, s0) = acc
-         (n1, s1) = transposeMusic targetks s0 n
+         (n1, s1) = transposeMusic s0 n
        in
         ( n1 :: ns, s1)
   in
@@ -214,13 +241,13 @@ transposeMusicList targetks state ms =
     in
       (List.reverse tns, news)
 
-transposeNoteList : ModifiedKeySignature -> TranspositionState -> List AbcNote -> (List AbcNote, TranspositionState)
-transposeNoteList targetks state ns =
+transposeNoteList : TranspositionState -> List AbcNote -> (List AbcNote, TranspositionState)
+transposeNoteList state ns =
   let
      f n acc = 
        let 
          (ns, s0) = acc
-         (n1, s1) = transposeNoteBy targetks s0 n
+         (n1, s1) = transposeNoteBy s0 n
        in
         ( n1 :: ns, s1)
   in
@@ -230,59 +257,98 @@ transposeNoteList targetks state ns =
       (List.reverse tns, news)
   
 
-transposeChord : ModifiedKeySignature -> TranspositionState -> AbcChord -> (AbcChord, TranspositionState)
-transposeChord targetks state c =
+transposeChord : TranspositionState -> AbcChord -> (AbcChord, TranspositionState)
+transposeChord state c =
   let 
-    (ns, newstate) = transposeNoteList targetks state c.notes
+    (ns, newstate) = transposeNoteList state c.notes
   in
     ( { c | notes = ns}, newstate)
 
 {-| transpose a note by the required distance which may be positive or negative 
-    transposition distance is taken from the state
+    transposition distance and source and target keys are taken from the state.  This is the heart of the module.
+
+    The strategy is:
+      * does the source note have an explicit accidental?
+      * if not, does it have an implicit accidental?  i.e. implied by the key signature or an earlier explicit in the bar
+      * move the note to the target by the required distance between the keys, using either form of accidental if present
+      * if the source note had an explicit accidental, we'll assume that the target does so
+      * if there is an explicit accidental, save the source note in the source bar accidentals, ditto for the target, keep in the state
+      * for the final transposed note, suppress the accidental (i.e. AbcNote.accidental is Nothing) if it exists in either the target 
+        key or the target bar accidentals
 -}
-transposeNoteBy : ModifiedKeySignature -> TranspositionState -> AbcNote -> (AbcNote, TranspositionState)
-transposeNoteBy targetKs state note =
+transposeNoteBy : TranspositionState -> AbcNote -> (AbcNote, TranspositionState)
+transposeNoteBy state note =
   let
-    -- make any implicit accidental explicit in the note to be transposed if it's not marked as an accidental
-    inKeyAccidental = accidentalImplicitInKey note (state.srcmks)
-    inBarAccidental = lookupNote note state.sourceBarAccidentals
-    implicitAccidental = oneOf [inKeyAccidental, inBarAccidental]
-    explicitNote = 
+    -- make any implicit accidental explicit in the source note to be transposed if it's not marked as an accidental
+    inSourceKeyAccidental = accidentalImplicitInKey note.pitchClass (state.sourcemks)
+    inSourceBarAccidental = lookup note.pitchClass state.sourceBarAccidentals
+    implicitSourceAccidental = oneOf [inSourceKeyAccidental, inSourceBarAccidental]
+    explicitSourceNote = 
       if (isJust note.accidental) then
         note
       else 
-        { note | accidental = implicitAccidental }
-    -- _ = log "note to transpose" note
-    -- _ = log "local accidentals" state.sourceBarAccidentals
-    srcNum = noteNumber explicitNote
+        { note | accidental = implicitSourceAccidental }
+    -- _ = log "\r\nsource note" note
+    -- _ = log "source note made explicit" explicitSourceNote
+    -- _ = log "source accidentals" state.sourceBarAccidentals 
+    -- _ = log "target keyset" state.targetKeySet
+    -- _ = log "target key sig " state.targetmks
+    -- _ = log "target accidentals" state.targetBarAccidentals 
+    srcNum = noteNumber explicitSourceNote
     (targetNum, octaveIncrement) = noteIndex srcNum (state.keyDistance)
-    (pc, acc) = pitchFromInt (fst targetKs) targetNum
-    -- if the original note had an explicit accidental then if the transposed note
-    -- is a natural, it must retain its explcit nature, otherwise, it can be implicit (i.e. Nothing)
-    macc = case acc of
-      Natural -> 
-        if (isJust note.accidental) then
-          Just Natural
-        else
-          Nothing
-      x -> Just x
-    -- save the key class of the original untransposed note
-    newState = addSourceBarAccidental note state
+    ka = pitchFromInt (fst state.targetmks) targetNum
+    (pc, acc) = sharpenFlatEnharmonic ka
+    -- is this an implicit accidental ?
+    isImplicitTarget =
+      inKeySet ka state.targetKeySet 
+       || isJust (Music.Accidentals.lookup pc state.targetBarAccidentals)
+    -- _ = log "is implicit target" isImplicitTarget
+    -- _ = log "target scale" targetScale
+    -- set the accidental nature of the target.  If it's implicit or in the 7-note scale of the target key, we denote it with Nothing 
+    targetAcc = 
+      if isImplicitTarget || (inScale ka state.targetScale) then
+        Nothing
+      else
+        Just acc
+    transposedNote = { note | pitchClass = pc, accidental = targetAcc, octave = note.octave + octaveIncrement }
+    -- _ = log "transposed note" transposedNote 
+
+    -- save any accidental nature of the original untransposed note
+    newSourceAccs = addBarAccidental note.pitchClass note.accidental state.sourceBarAccidentals
+
+    -- we need to save the target accidental if the source note has an explicit accidental
+    -- because it will have done so in most cases to over-ride the previous state
+    newTargetAccs = 
+      if (isJust note.accidental) then
+        -- we use the explicit form of the target
+        addBarAccidental pc (Just acc) state.targetBarAccidentals
+      else
+        state.targetBarAccidentals   
+    -- update the state with both the source an target bar accidentals
+    newState = { state | sourceBarAccidentals = newSourceAccs, targetBarAccidentals = newTargetAccs }
   in
-    ( { note | pitchClass = pc, accidental = macc, octave = note.octave + octaveIncrement }, newState)
+    ( transposedNote, newState)
+
+{-| enharmonic equivalence for flattened accidentals
+   We'll (for the moment) use the convention that most flat accidentals
+   are presented in sharpened form
+ -}
+sharpenFlatEnharmonic : KeyAccidental -> KeyAccidental
+sharpenFlatEnharmonic ka = 
+    case ka of 
+      (G, Flat) -> (F, Sharp)
+      (D, Flat) -> (C, Sharp)
+      _ -> ka
 
 {- we need to take note of any accidentals so far in the bar because these may influence
-   later notes in that bar.  If the note uses an accidental, add it to the key set if it's new.
+   later notes in that bar.  If the note uses an accidental, add it to the accidental set.
 -}
-addSourceBarAccidental : AbcNote -> TranspositionState -> TranspositionState
-addSourceBarAccidental n state =
-  case n.accidental of
+addBarAccidental : PitchClass -> Maybe Accidental -> Accidentals -> Accidentals
+addBarAccidental pc ma accs =
+  case ma of
     Just acc ->
-      let
-         newSourceAccs = Music.Accidentals.add n.pitchClass acc state.sourceBarAccidentals
-      in
-        { state | sourceBarAccidentals = newSourceAccs }
-    _ -> state
+      Music.Accidentals.add pc acc accs
+    _ -> accs
 
 
 {- create a list of pairs which should match every possible
@@ -358,7 +424,7 @@ flatNoteNumbers =
 {- given a key signature and an integer (0 <= n < notesInChromaticScale)
    return the pitch of the note within that signature
 -}
-pitchFromInt : KeySignature -> Int -> (PitchClass, Accidental)
+pitchFromInt : KeySignature -> Int -> KeyAccidental
 pitchFromInt ks i =
   let
     dict =
@@ -449,7 +515,9 @@ noteNumber n =
 noteIndex : Int -> Int -> (Int, Int)
 noteIndex from increment =
   let
-    to = (from + increment)
+    -- _ = log "note index from" from
+    -- _ = log "note index by" increment
+    to = (from + increment) 
   in 
     if to < 0 then
       ((notesInChromaticScale + to), -1)
@@ -466,8 +534,13 @@ transpositionDistance target src  =
     (tpc, tmacc) = target
     sacc = smacc |> withDefault Natural 
     tacc = tmacc |> withDefault Natural 
+    distance = (pitchNumber (tpc, tacc) - pitchNumber (spc, sacc))
   in 
-    pitchNumber (tpc, tacc) - pitchNumber (spc, sacc)
+    -- +5 is a shorter distance than -7 etc 
+    if (distance <= -7) then
+      (notesInChromaticScale + distance) % notesInChromaticScale
+    else
+      distance
 
 {- replace a Key header (if it exists) -}
 replaceKeyHeader : ModifiedKeySignature -> TuneHeaders -> TuneHeaders
