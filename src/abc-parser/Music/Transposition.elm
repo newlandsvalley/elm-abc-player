@@ -282,44 +282,51 @@ transposeNoteBy state note =
     -- make any implicit accidental explicit in the source note to be transposed if it's not marked as an accidental
     inSourceKeyAccidental = accidentalImplicitInKey note.pitchClass (state.sourcemks)
     inSourceBarAccidental = lookup note.pitchClass state.sourceBarAccidentals
-    implicitSourceAccidental = oneOf [inSourceKeyAccidental, inSourceBarAccidental]
+    -- we must do the lookup of the source accidental in this order - local bar overrides key
+    implicitSourceAccidental = oneOf [inSourceBarAccidental, inSourceKeyAccidental ]
     explicitSourceNote = 
       if (isJust note.accidental) then
         note
       else 
         { note | accidental = implicitSourceAccidental }
-    -- _ = log "\r\nsource note" note
-    -- _ = log "source note made explicit" explicitSourceNote
-    -- _ = log "source accidentals" state.sourceBarAccidentals 
-    -- _ = log "target keyset" state.targetKeySet
-    -- _ = log "target key sig " state.targetmks
-    -- _ = log "target accidentals" state.targetBarAccidentals 
-    srcNum = noteNumber explicitSourceNote
+    srcNum = noteNumber explicitSourceNote    
     (targetNum, octaveIncrement) = noteIndex srcNum (state.keyDistance)
     ka = pitchFromInt (fst state.targetmks) targetNum
     (pc, acc) = sharpenFlatEnharmonic ka
-    -- is this an implicit accidental ?
-    isImplicitTarget =
-      inKeySet ka state.targetKeySet 
-       || isJust (Music.Accidentals.lookup pc state.targetBarAccidentals)
-    -- _ = log "is implicit target" isImplicitTarget
-    -- _ = log "target scale" targetScale
-    -- set the accidental nature of the target.  If it's implicit or in the 7-note scale of the target key, we denote it with Nothing 
-    targetAcc = 
-      if isImplicitTarget || (inScale ka state.targetScale) then
+
+    targetAcc =
+      -- is it present in the local target bar accidentals
+      if (Music.Accidentals.member (pc, acc) state.targetBarAccidentals) then
+        Nothing
+      -- is it present in the local target bar accidentals but with a different value
+      else if (isJust (Music.Accidentals.lookup pc state.targetBarAccidentals)) then
+        Just acc
+      -- is it in the set of keys in the target diatonic scale
+      else if (inScale (pc, acc) state.targetScale) then
         Nothing
       else
         Just acc
+
     transposedNote = { note | pitchClass = pc, accidental = targetAcc, octave = note.octave + octaveIncrement }
-    -- _ = log "transposed note" transposedNote 
+    {- 
+    _ = log "\r\nsource note" note
+    _ = log "source note made explicit" explicitSourceNote
+    _ = log "source accidentals" state.sourceBarAccidentals 
+    _ = log "target keyset" state.targetKeySet
+    _ = log "target key sig " state.targetmks
+    _ = log "target accidentals" state.targetBarAccidentals 
+    _ = log "target scale" state.targetScale 
+    _ = log "transposed note" transposedNote 
+    _ = log "accidentalised target note" (pc, acc)
+    _ = log "is transposed note a member of target accs" (Music.Accidentals.member (pc, acc) state.targetBarAccidentals)
+    -}   
 
     -- save any accidental nature of the original untransposed note
     newSourceAccs = addBarAccidental note.pitchClass note.accidental state.sourceBarAccidentals
 
-    -- we need to save the target accidental if the source note has an explicit accidental
-    -- because it will have done so in most cases to over-ride the previous state
+    -- if the target, after all this, has an explicit accidental, we need to save it in the target bar accidental state
     newTargetAccs = 
-      if (isJust note.accidental) then
+      if (isJust targetAcc) then
         -- we use the explicit form of the target
         addBarAccidental pc (Just acc) state.targetBarAccidentals
       else

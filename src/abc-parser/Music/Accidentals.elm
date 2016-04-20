@@ -5,28 +5,15 @@ module Music.Accidentals
   , fromKeySet
   , lookup
   , member
+  -- , isOverriddenKey
   ) where
   
   
-{-|  module to provide a type-safe interface into handling
+{-|  private module to provide a type-safe interface into handling
     sets of Key Accidentals - i.e. pitch classes associated
     with an explicit sharp, flat or natural modifier.
     
     (as of elm 0.16, type-safety of Dicts is compromised)
-
-
-# Definition
-
-# Data Types
-@docs Accidentals
-
-# Functions
-@docs empty
-    , add
-    , fromKeySet
-    , lookup
-    , member
-
 -}
 
 import Abc.ParseTree exposing (AbcNote, PitchClass (..), Accidental (..), KeyAccidental, KeySet)
@@ -80,6 +67,30 @@ member ka accs =
     macc = Dict.get (toString pc) accs
   in
     (Just acc) == macc
+
+
+{-| lookup a KeyAccidental in the key set and see if it has been overridden in the bar
+    (e.g. by an explicit naturalisation of a key accidental
+
+isOverriddenKey : KeyAccidental -> KeySet -> Bool
+isOverriddenKey ka ks =
+  let
+    keyAccs = fromKeySet ks
+  in
+    isOverridden ka keyAccs
+-}
+
+{-| lookup a KeyAccidental and see if its pitch class exists but its accidental value differs 
+isOverridden : KeyAccidental -> Accidentals -> Bool
+isOverridden ka accs =
+  let
+    (pc, acc) = ka
+    macc = Dict.get (toString pc) accs
+  in
+    case macc of
+      (Just someacc) -> acc /= someacc
+      _ -> False
+-}
     
    
 
