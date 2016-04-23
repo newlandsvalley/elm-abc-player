@@ -34,8 +34,6 @@ import String exposing (fromChar, toUpper)
 import Ratio exposing (Rational, over, fromInt, toFloat, add)
 import Maybe exposing (withDefault)
 
-
-
 type alias TranslationState = 
    { modifiedKeySignature : ModifiedKeySignature
    , tempo : AbcTempo
@@ -342,14 +340,11 @@ fromAbc tune =
      let
         (music, state) =  List.foldl f headerState (snd tune)
         -- ensure we don't forget the residual closing bar (still kept in the state) which may yet contain music
-        fullMusic =
-          if (isEmptyBar state.thisBar) then
-            reverseMelody music
-          else
-            reverseMelody (state.thisBar :: music)
+        fullMusic =            
+           reverseMelody (state.thisBar :: music)
         -- finalise the repeat state with the last bar
         repeatState = finalise state.thisBar state.repeatState
-        -- repeatState = finalise (log "last bar" state.thisBar) (log "repeat state" state.repeatState)
+        -- _ = log "repeats" (List.reverse repeatState.repeats)
      in
        (fullMusic, (List.reverse repeatState.repeats))
 

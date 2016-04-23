@@ -7,7 +7,7 @@ module Repeats ( Section
                , buildRepeatedMelody
                ) where
 
-{-|  functions to index repeated RepeatState in an ABC performance 
+{-|  functions to index repeated RepeatState in an ABC performance and to build a full melody with repeats expanded
 
      for example:
 
@@ -33,14 +33,17 @@ module Repeats ( Section
 
 import Melody exposing (ABar, MelodyLine)
 import Abc.ParseTree exposing (Repeat (..))
+import Maybe exposing (withDefault) 
 import Maybe.Extra exposing (isJust)
 import List.Extra exposing (takeWhile, dropWhile)
+
 
 type alias Section =
   { start : Maybe Int
   , firstEnding : Maybe Int
   , secondEnding : Maybe Int
   , end : Maybe Int
+  , isRepeated: Bool
   }
 
 type alias Repeats = List Section
@@ -72,34 +75,31 @@ indexBar b r =
         startSection b.number r
      -- :|
      (_, Just End) ->       
-        endSection b.number r
+        endSection b.number True r
      -- :|:  or ::
      (_, Just BeginAndEnd) ->
-        endAndStartSection b.number b.number r
+        endAndStartSection b.number True True r
      _ ->
        r
 
-{-| accumulate any residual current state -}
+{-| accumulate any residual current state from the final bar in the tune -}
 finalise : ABar -> RepeatState -> RepeatState
 finalise lastBar r =
   let
-     -- this is the last bar - if we're ending on a repeat variant, then we need to terminate it properly
-     current = r.current
-     -- mark the last bar with the end repeat if we're in a variant ending
-     newLastBar =
-       if (isJust current.firstEnding) then
-          { lastBar | repeat = Just End }
-       else
-         lastBar
-     -- and then index the last bar
-     newr = indexBar newLastBar r    
+    -- _ = log "last bar" lastBar 
+    -- end the current section with the last bar number
+    current = endCurrentSection lastBar.number r.current
+    -- fix a degenerate case where we have a repeat indicated by end markers and no begin markers
+    -- i.e. this must be the first and also the last (repeated) phrase in the tune
+    current1 =     
+      if (isEmptyRepeatEndBar lastBar) then
+        setRepeated current
+      else
+        current
+    newr = 
+      { r | current = current1 }
   in
-    -- nothing of interest in current so just return it
-    if (isNullSection newr.current) then
-      newr
-    else 
-    -- something of interest in current so accummulate it and return it
-      accumulateSection newr
+    accumulateSection newr    
 
 {-| build any repeated section into an extended melody with all repeats realised -}
 buildRepeatedMelody : (MelodyLine, Repeats) -> MelodyLine
@@ -112,43 +112,45 @@ buildRepeatedMelody (ml, repeats) =
 {- a 'null' section -}
 nullSection : Section
 nullSection =
- { start = Just 0, firstEnding  = Nothing, secondEnding  = Nothing, end = Just 0 }
+ { start = Just 0, firstEnding  = Nothing, secondEnding  = Nothing, end = Just 0, isRepeated = False }
 
 {- accumulate the last section and start a new section  -}
 startSection : Int -> RepeatState -> RepeatState
 startSection pos r =
   -- a start implies an end of the last section
-  endAndStartSection pos pos r
+  endAndStartSection pos False True r
 
-{-
-startSection pos r =
-  let 
-    newState =  accumulateSection r
-    newCurrent = { nullSection | start = Just pos }
-  in
-    { newState | current = newCurrent }
+{- end the section.  If there is a first repeat, keep it open, else accumulate it 
+    pos : the bar number marking the end of section
+    isRepeatEnd : True if invoked with a known Repeat End marker in the bar line
 -}
-
-{- end the section.  If there is a first repeat, keep it open, else accumulate it -}
-endSection : Int -> RepeatState -> RepeatState
-endSection pos r =
+endSection : Int -> Bool -> RepeatState -> RepeatState
+endSection pos isRepeatEnd r =
     if (hasFirstEnding r.current) then
       let
         current = endCurrentSection pos r.current
       in
         { r | current = current }
     else
-       endAndStartSection pos 0 r
+       endAndStartSection pos isRepeatEnd False r
 
 {- end the current section, accumulate it and start a new section  -}
-endAndStartSection : Int -> Int -> RepeatState -> RepeatState
-endAndStartSection endpos startpos r =
+endAndStartSection : Int -> Bool -> Bool -> RepeatState -> RepeatState
+endAndStartSection pos isRepeatEnd isRepeatStart r =
   let 
-    current = r.current
-    endCurrent = { current | end = Just endpos }
+    -- cater for the situation where the ABC marks the first section of the tune as repeated solely by use
+    -- of the End Repeat marker with no such explicit marker at the start of the section - it is implied as the tune start 
+    current = 
+      if (isRepeatEnd && r.current.start == Just 0) then
+        setRepeated r.current
+      else
+        r.current
+    -- now set the end position from the bar number position
+    endCurrent = { current | end = Just pos }      
+    -- set the entire state and accumulate
     endState = { r | current = endCurrent }
     newState =  accumulateSection endState
-    newCurrent = { nullSection | start = Just startpos }
+    newCurrent = { nullSection | start = Just pos, isRepeated = isRepeatStart }
   in
     { newState | current = newCurrent }
  
@@ -167,14 +169,25 @@ secondRepeat : Int -> Section -> Section
 secondRepeat pos s =
   { s | secondEnding = Just pos }
 
+{- set the isRepeated status of a section -}
+setRepeated : Section -> Section
+setRepeated s =
+  { s | isRepeated = True }
+
+{- return True if the section is devoid of any useful content -}
 isNullSection : Section -> Bool
 isNullSection s = 
   s == nullSection
 
+{- return True if the first (variant) ending is set -}
 hasFirstEnding : Section -> Bool
 hasFirstEnding s =
   isJust s.firstEnding
 
+{- recognise a solitary bar indicating an end repeat and nothing more - used in finalise -}
+isEmptyRepeatEndBar : ABar -> Bool
+isEmptyRepeatEndBar b =
+  List.length b.notes == 0 && b.repeat == Just End
 
 {- accumulate the current section into the full score and re-initialise it -}
 accumulateSection : RepeatState -> RepeatState
@@ -202,15 +215,21 @@ variantSlice start firstRepeat secondRepeat end ml =
   in
     firstSection ++ secondSection
 
+{- build the complete melody with repeated sections in place -}
 repeatedSection : MelodyLine -> Section ->  MelodyLine -> MelodyLine
 repeatedSection ml s acc  =
   let 
-    section { start, firstEnding, secondEnding, end } = (start, firstEnding, secondEnding, end)
+    section { start, firstEnding, secondEnding, end, isRepeated } = (start, firstEnding, secondEnding, end, isRepeated)
   in 
     case (section s) of
-      (Just a, Just b, Just c, Just d ) ->
+      -- variant ending repeat
+      (Just a, Just b, Just c, Just d, _ ) ->
          (variantSlice a b c d ml) ++ acc
-      ( Just a,  _,  _, Just d ) ->
+      -- simple phrase - no repeats
+      ( Just a,  _,  _, Just d, False ) ->
+         slice a d ml ++ acc
+      -- standard repeat
+      ( Just a,  _,  _, Just d, True ) ->
          (slice a d ml ++ slice a d ml) ++ acc
       _ -> []
 
