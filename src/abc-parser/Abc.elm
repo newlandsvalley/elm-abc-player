@@ -62,7 +62,7 @@ scoreItem = rec <| \() ->
     (
     choice 
        [ 
-         chord               -- I think we need it placed before barline because of ambiguity of '['
+         chord               -- I think we need it placed before barline because of ambiguity of '['  
        , inline              -- ditto
        , barline
        , brokenRhythmPair    -- must place before note because of potential ambiguity of AbcNote
@@ -302,7 +302,6 @@ mode = choice
          , minor   -- place last because of potential ambiguity	
          ]
 
-
 minor : Parser Mode
 minor = Minor <$ whiteSpace <* regex "(M|m)([A-Za-z])*"
 
@@ -366,7 +365,7 @@ instruction isInline =
                <?> "I header"
 
 key : Parser Header
-key = buildKey <$> (headerCode 'K') <*> keySignature <*> keyAccidentals <* strToEol
+key = buildKey <$> (headerCode 'K') <*> keySignature <*> keyAccidentals <* whiteSpace
                <?> "K header"
 
 unitNoteLength : Parser Header

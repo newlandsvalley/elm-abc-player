@@ -291,6 +291,8 @@ translateMusic m acc =
           newState =  { state | thisBar = newBar, nextBarNumber = nextBarNumber, repeatState = repeatState }
         in
           (newMelody, newState)
+      Inline header ->
+        updateState header acc
       _ -> acc
 
 -- translate an entire melody line from the tune body (up to an end of line)
