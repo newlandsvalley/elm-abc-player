@@ -50,6 +50,10 @@ dummyError =
   ,  position = 0
   }
 
+emptyTune : AbcTune
+emptyTune =
+  ([], [])
+
 
 init : String -> (Model, Effects Action)
 init topic =
@@ -59,7 +63,7 @@ init topic =
     ,  playing = False
     ,  maybeContext = Nothing
     ,  abc = ""
-    ,  tuneResult = Err dummyError
+    ,  tuneResult = Ok emptyTune
     }
   , Effects.none
   )
@@ -207,8 +211,8 @@ performanceDuration rp =
       maybeLastNote = List.head notes
    in 
       case maybeLastNote of
-        Nothing -> log "nothing" 0.0
-        Just ne -> log "Just" (fst ne)  -- the accumulated time
+        Nothing -> 0.0
+        Just ne -> (fst ne)  -- the accumulated time
 
 returnTuneResult : Result ParseError AbcTune -> Effects Action
 returnTuneResult r =
@@ -234,7 +238,8 @@ toPerformance ml =
 checkAbc : String -> Effects Action
 checkAbc abc = 
   let 
-    terminatedAbc = log "checking" (terminateLine abc)
+    terminatedAbc = terminateLine abc
+    -- _ = "checking" terminatedAbc
     pr = parse terminatedAbc
   in 
     returnTuneResult (pr)
@@ -559,7 +564,7 @@ bStyle enabled =
     basecss =
       [
         ("border", "none")
-      , ("padding", "5px 10px")
+      , ("padding", "2px 10px")
       , ("-webkit-border-radius", "8px")
       , ("-moz-border-radius", "8px")
       , ("-webkit-box-shadow", "rgba(0,0,0,1) 0 1px 0")
@@ -570,7 +575,8 @@ bStyle enabled =
       , ("font-family", "Georgia, serif")
       , ("text-decoration", "none")
       , ("vertical-align", "middle") 
-      , ("margin", "5px 5px 5px 5px")
+      -- , ("margin", "5px 5px 5px 5px")
+      , ("margin", "10px 0px 10px 25px")
       , ("font", "100% \"Trebuchet MS\", Verdana, sans-serif")
       , ("-webkit-transition-duration", "0.2s")
       , ("-moz-transition-duration", "0.2s")

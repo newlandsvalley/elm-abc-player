@@ -68,7 +68,8 @@ fromBar b acc =
     f ne acc =       
       case ne of
         ANote n tied ->
-          fromNote (log "note" n) tied acc
+          fromNote n tied acc
+          -- fromNote (log "note" n) tied acc
         AChord c ->
           fromChord c acc
   in

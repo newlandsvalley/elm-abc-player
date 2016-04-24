@@ -299,7 +299,7 @@ Elm.Native.SoundFont.make = function (localRuntime) {
  
     /* play an audio buffer at the supplied time offet and with appropriate volume (gain) */
     values.play = F4(function (context, buffer, time, gain) {
-        console.log("buffer to play: " + buffer + " time: " + time + " with gain: " + gain)
+        /* console.log("buffer to play: " + buffer + " time: " + time + " with gain: " + gain) */
             return Task.asyncFunction(function (callback) {
                 playSound(context, buffer, time, gain)
                 callback(Task.succeed(Utils.Tuple0));
