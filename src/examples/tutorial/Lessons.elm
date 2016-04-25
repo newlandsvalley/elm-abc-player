@@ -103,7 +103,7 @@ instChords =
    " If you do both, the durations are multiplied together"
 
 xmplChords = 
-  "| A2 Bc dcBc | [CEa] GBG [BGD]4 |"
+  "| A2 Bc dcBc |[CEa] GBG [BGD]4 |"
 
 hintChords =
   "Try adding another phrase that ends in a chord."
@@ -270,7 +270,7 @@ instChangeKeyTransient =
   "You can also mark a transient key change by placing the K (key) header in the body of the tune score, but enclosed within square brackets."
 
 xmplChangeKeyTransient =
-  "Q:1/4=80\r\nK:C\r\n| C,E,G,C | [K:A] A,CEA | [K:B] B,DFB | [K:C] CEGc |\r\n"
+  "Q:1/4=80\r\nK:C\r\n| C,E,G,C |[K:A] A,CEA |[K:B] B,DFB |[K:C] CEGc |\r\n"
   
 instMixolydian =
   "If you come across a modal tune, rather than marking its key signature as straightforward major or minor,"  ++

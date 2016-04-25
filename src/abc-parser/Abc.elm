@@ -62,8 +62,8 @@ scoreItem = rec <| \() ->
     (
     choice 
        [ 
-         chord               -- I think we need it placed before barline because of ambiguity of '['  
-       , inline              -- ditto
+         chord                
+       , inline             
        , barline
        , brokenRhythmPair    -- must place before note because of potential ambiguity of AbcNote
        , note
@@ -85,7 +85,7 @@ scoreItem = rec <| \() ->
 {- a bar line (plus optional repeat iteration marker)
    see comments in 4.8 Repeat/bar symbols:
    Abc parsers should be quite liberal in recognizing bar lines. In the wild, bar lines may have 
-   any shape, using a sequence of | (thin bar line), [ or ] (thick bar line), and : (dots), e.g. |[| or [|::: 
+   any shape, using a sequence of | (thin bar line), [| or |] (thick bar line), and : (dots), e.g. |[| or [|::: 
 -}
 barline : Parser Music
 barline = buildBarline <$> barSeparator <*> maybe Combine.Num.digit
@@ -94,14 +94,14 @@ barline = buildBarline <$> barSeparator <*> maybe Combine.Num.digit
 {- written like this instead of a regex because it's all regex control character! -}
 barSeparator : Parser String
 barSeparator = 
-  String.fromList <$>
+  String.concat <$>
     (
     many1 <|
       choice 
-        [ char '|'
-        , char '['
-        , char ']'
-        , char ':'
+        [ string "[|"
+        , string "|]"
+        , string "|"
+        , string ":"
         ]
     )       
 
@@ -479,7 +479,7 @@ tuneBodyHeader  = BodyInfo <$> tuneBodyInfo True <* eol
 
   One subtlety is therefore that header information that accepts simple text content
   should not be allowed to incorporate '[' or ']' because of the potential ambiguity.
-  Thus, headers functions are given a paraneter 'inline' which is the inline context
+  Thus, headers functions are given a parameter 'inline' which is the inline context
   simply allowing 'normal' headers to accept these values in text content but to allow
   inline headers to reject them.
 -}
@@ -821,6 +821,10 @@ buildKey c ks ka = Key (ks, ka)
   this is a bit tricky because of the poor specification for the possible shapes of bar lines 
   which may have multiple different types of bar line markers (|,[,]) and repeat markers (:)  
   Try to normalise to representations of basic shapes like (|, |:, :|, :||, ||:, ||, :|:, :||: )
+
+  This drops support in the parse tree for 'thick' bar lines of the form '[|' and '|]'
+  this is OK for the current use as a player, but will not be too good for use in an application printing a score
+  Maybe we'll put in support later on when the need arises - we can do it simply if we re-specify Bar.lines 
 -}
 buildBarline : String -> Maybe Int -> Music
 buildBarline s i = 
