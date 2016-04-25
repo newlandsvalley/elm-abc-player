@@ -281,13 +281,21 @@ keySignature : Parser KeySignature
 keySignature = 
   buildKeySignature <$> keyName <*> maybe sharpOrFlat <*> maybe mode
 
--- an accidental as an amendment to a key signature - as in e.g. K:D Phr ^f
+-- a complete list of key accidentals which may be empty
+keyAccidentals : Parser KeySet
+keyAccidentals = buildKeyAccidentals <$> spacelessAccidental <*> keyAccidentalsList 
+
+-- I think the first in the list is optionally introduced without a space  (judging by what's in the wild)
+spacelessAccidental : Parser (Maybe KeyAccidental)
+spacelessAccidental = maybe keyAccidental
+
+-- there may be zero or more key accidentals, separated by spaces (KeySet is a List of Key Accidentals)
+keyAccidentalsList : Parser KeySet
+keyAccidentalsList = many (space *> keyAccidental)
+
+-- a key accidental as an amendment to a key signature - as in e.g. K:D Phr ^f
 keyAccidental : Parser KeyAccidental
 keyAccidental = buildKeyAccidental <$> accidental <*> pitch
-
--- of which there may be zero or more, separated by spaces (KeySet is a List of Key Accidentals)
-keyAccidentals : Parser KeySet
-keyAccidentals = many (space *> keyAccidental)
 
 mode : Parser Mode
 mode = choice 
@@ -822,22 +830,28 @@ buildKey c ks ka = Key (ks, ka)
   which may have multiple different types of bar line markers (|,[,]) and repeat markers (:)  
   Try to normalise to representations of basic shapes like (|, |:, :|, :||, ||:, ||, :|:, :||: )
 
-  This drops support in the parse tree for 'thick' bar lines of the form '[|' and '|]'
-  this is OK for the current use as a player, but will not be too good for use in an application printing a score
-  Maybe we'll put in support later on when the need arises - we can do it simply if we re-specify Bar.lines 
 -}
 buildBarline : String -> Maybe Int -> Music
 buildBarline s i = 
   let 
+    -- estimate the bar separator thickness
+    thickness =
+      if (String.contains "|]" s) then
+         ThinThick
+      else if (String.contains "[|" s) then
+         ThickThin
+      else if (String.contains "||" s) then
+         ThinThin
+      else
+         Thin
+
+    -- now normalise all lines to '|' 
     f c = case c of
       '[' -> '|'
       ']' -> '|'
       _ -> c
-    -- normalise all lines to '|'
     normalised = String.map f s
-    -- count the lines up to a maximum of 2, minimum of 1
-    lines = String.length (String.filter (\c -> c == '|') normalised)
-    normalisedLineCount = max (min lines 2) 1 
+
     -- count the repeat markers
     repeatCount = String.length (String.filter (\c -> c == ':') normalised)
     -- set the repeat
@@ -852,7 +866,7 @@ buildBarline s i =
        else 
          Just BeginAndEnd
   in
-    Barline { lines = normalisedLineCount, repeat = repeat, iteration = i }
+    Barline { thickness = thickness, repeat = repeat, iteration = i }
 
   
 buildNote : Maybe Accidental -> String -> Int -> Maybe Rational -> Maybe Char -> AbcNote
@@ -893,8 +907,14 @@ buildKeyAccidental a pitchStr =
   in
     (pc, a)
 
+buildKeyAccidentals : Maybe KeyAccidental -> List KeyAccidental -> List KeyAccidental
+buildKeyAccidentals mac acs =
+  case mac of
+    Just ac -> ac :: acs
+    _ -> acs
+
 buildChord : List AbcNote -> Maybe Rational ->  AbcChord
-buildChord ns ml = 
+buildChord ns ml =  
   let
     l = withDefault (Ratio.fromInt 1) ml
   in 

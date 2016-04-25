@@ -9,6 +9,7 @@ module Abc.ParseTree
     , AbcNote
     , AbcChord
     , Bar
+    , Thickness (..)
     , Repeat (..)
     , NoteDuration
     , KeySignature
@@ -123,6 +124,14 @@ type Music
   | Ignore
   | Continuation
 
+{-| a bar line thickness -}
+type Thickness =
+    Thin
+  | ThinThin
+  | ThinThick
+  | ThickThin
+  
+
 {-| a Repeat in a Bar line -}
 type Repeat = 
     Begin
@@ -130,12 +139,12 @@ type Repeat =
   | BeginAndEnd
 
 {-| a Bar line 
-   lines - the number of vertical lines in the bar
+   thickness - the thickness of vertical lines in the bar
    repeat - the type (if any) of a repeat marker for the section
    iteration - the section end may be iteration 1 or 2
 -}
 type alias Bar = 
-  { lines : Int
+  { thickness : Thickness
   , repeat : Maybe Repeat
   , iteration : Maybe Int
   }

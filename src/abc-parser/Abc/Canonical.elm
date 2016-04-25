@@ -36,7 +36,12 @@ bar : Bar -> String
 bar b = 
   let 
     it = withDefault "" (Maybe.map toString b.iteration)
-    lines = String.repeat b.lines "|"
+    lines = 
+     case b.thickness of
+       ThickThin -> "[|"
+       ThinThick -> "|]"
+       ThinThin -> "||"
+       _ -> "|"
   in
     case b.repeat of
       Nothing -> 
@@ -47,7 +52,7 @@ bar b =
         ":" ++ lines ++ it
       Just BeginAndEnd ->
         ":" ++ lines ++ ":"  
-    
+
 accidental : Accidental -> String
 accidental a = case a of
   Sharp -> "^"
