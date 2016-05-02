@@ -311,14 +311,19 @@ viewError m =
           text ""
         else
           let
+            -- display a prefix of 5 characters before the error (if they're there) and a suffix of 5 after
             startPhrase = Basics.max (e.position - 5) 0
-            errorPreface = "error: " ++ slice startPhrase e.position m.abc
+            errorPrefix = "error: " ++ slice startPhrase e.position m.abc
+            startSuffix = Basics.min (e.position + 1) (String.length m.abc)
+            endSuffix = Basics.min (e.position + 6) (String.length m.abc)
+            errorSuffix = slice startSuffix endSuffix m.abc
             errorChar = slice e.position (e.position + 1) m.abc
           in
             p [ ]
-                [ text errorPreface 
+                [ text errorPrefix
                 , span [ errorHighlightStyle ]
                     [ text errorChar ]
+                , text errorSuffix
                 ]
       _ -> text ""
 
