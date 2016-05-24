@@ -1,7 +1,7 @@
-module Abc.Canonical 
+module Abc.Canonical exposing
    ( fromTune
    , fromResult
-   ) where
+   ) 
    
 {-|  Module for converting an ABC Tune parse tree to a canonical ABC string,
    

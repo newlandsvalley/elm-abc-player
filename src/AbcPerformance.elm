@@ -1,8 +1,9 @@
-module AbcPerformance (  fromAbc
-                       , fromAbcResult
-                       , melodyFromAbc
-                       , melodyFromAbcResult
-                       ) where
+module AbcPerformance exposing
+  ( fromAbc
+  , fromAbcResult
+  , melodyFromAbc
+  , melodyFromAbcResult
+  ) 
 
 {-|  conversion of a ABC Tune parse tree to a performance
 

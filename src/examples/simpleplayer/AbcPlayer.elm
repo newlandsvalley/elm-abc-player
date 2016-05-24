@@ -1,89 +1,77 @@
-module AbcPlayer where
+module AbcPlayer exposing (..)
 
-import Effects exposing (Effects, task)
 import Html exposing (..)
 import Html.Events exposing (onClick)
 import Http exposing (..)
+import Html.App as Html
 import Task exposing (..)
 import List exposing (..)
 import Maybe exposing (..)
 import String exposing (..)
 import Result exposing (Result, formatError)
-import Dict exposing (Dict)
-import SoundFont exposing (..)
+import SoundFont.Ports exposing (..)
+import SoundFont.Types exposing (..)
 import Abc exposing (..)
 import Music.Notation exposing (..)
 import AbcPerformance exposing (..)
 import Melody exposing (..)
 import Notable exposing (..)
 
--- MODEL
-type alias Sound = Task Effects.Never ()
-type alias Sounds = List Sound
+main =
+  Html.program
+    { init = (init, Cmd.none), update = update, view = view, subscriptions = \_ -> Sub.none }
 
+-- MODEL
 type alias Model =
-    { samples : Dict Int SoundSample
-    , loaded : Bool
-    , maybeContext : Maybe AudioContext
+    { 
+      fontsLoaded : Bool
     , performance : Result String Performance
     }
 
-init : String -> (Model, Effects Action)
-init topic =
-  ( { 
-      samples = Dict.empty
-    , loaded = False
-    , maybeContext = Nothing
+init : Model
+init =
+    {       
+      fontsLoaded = False
     , performance = Err "not started"
     }
-  , Effects.none
-  )
 
 -- UPDATE
 
-type Action
+type Msg
     = NoOp   
-    | LoadFont (Maybe SoundSample)
+    | RequestLoadFonts String
+    | LoadFile String
+    | FontsLoaded Bool
     | Abc (Result String Performance )
     | Play
 
-update : Action -> Model -> (Model, Effects Action)
-update action model =
-  case action of
-    NoOp -> (model, Effects.none )
+update : Msg -> Model -> (Model, Cmd Msg)
+update msg model =
+  case msg of
+    NoOp -> (model, Cmd.none )
 
-    LoadFont mss ->
-      case mss of
-        Nothing ->
-          (model, Effects.none)
-        Just ss -> 
-          case ss.name of
-            "end" ->
-               ( finaliseAudioContext model, loadAbc "abc/lillasystern.abc" )
-               -- ({ model | loaded = True }, loadAbc "abc/tie.abc" )
-               -- ({ model | loaded = True }, loadAbc "abc/justnotes.abc" )
-            _ -> 
-              let pitch = toInt ss.name
-              in
-                ( { model | samples = Dict.insert pitch ss model.samples }, 
-                  Effects.none
-                )        
+    RequestLoadFonts dir ->
+      ( model
+      , requestLoadFonts dir
+      )
+    LoadFile name ->
+      ( model
+      , loadAbc name
+      )
+    FontsLoaded loaded ->
+      ( { model | fontsLoaded = loaded }
+      , Cmd.none
+      )  
 
-    Abc result ->  ( { model | performance = result }, Effects.none ) 
+    Abc result ->  ( { model | performance = result }, Cmd.none ) 
 
-    Play -> (model, playSounds <| makeSounds model.maybeContext model.samples model.performance)   
-
-{- finalise the audio context in the model -}
-finaliseAudioContext : Model -> Model
-finaliseAudioContext m =
-  let
-    ctx = 
-      if (isWebAudioEnabled) then
-        Just (getAudioContext ())
-      else
-        Nothing
-  in
-    { m | maybeContext = ctx, loaded = True }
+    Play ->
+      let
+        notes = makeMIDINotes model.performance
+      in
+        ( model
+        , requestPlayNoteSequence notes 
+        ) 
    
 mToList : Maybe (List a) -> List a
 mToList m = case m of
@@ -92,7 +80,7 @@ mToList m = case m of
 
 
 {- load an ABC file -}
-loadAbc : String -> Effects Action
+loadAbc : String -> Cmd Msg
 loadAbc url = 
       let settings =  { defaultSettings | desiredResponseType  = Just "text/plain; charset=utf-8" }   
         in
@@ -105,12 +93,12 @@ loadAbc url =
           |> Task.toResult
           |> Task.map extractResponse
           |> Task.map parseLoadedFile
-          |> Task.map Abc
-          |> Effects.task
+          |> Task.perform (\_ -> NoOp) Abc
 
 {- inspect the next performance event and generate the appropriate sound command 
    which is done by looking up the sound fonts.  
 -}
+{-
 nextSound : AudioContext -> Dict Int SoundSample -> (Float, Notable) -> Sound
 nextSound ctx samples ne = 
   let 
@@ -124,11 +112,13 @@ nextSound ctx samples ne =
           soundBite = { mss = sample, time = time, gain = velocity }
         in
           maybePlay ctx soundBite
+-}
            
 
 {- make the sounds - if we have a performance result from parsing the midi file, convert
    the performance into a list of soundbites (aka Sounds)
 -}
+{-
 makeSounds :  Maybe AudioContext -> Dict Int SoundSample -> Result String Performance -> Sounds 
 makeSounds mctx ss perfResult = 
      case perfResult of
@@ -140,13 +130,16 @@ makeSounds mctx ss perfResult =
              []
        Err err ->
          []
+-}
 
 {- play the sounds as a single uninterruptible task -}
+{-
 playSounds : Sounds -> Effects Action
 playSounds sounds = 
       sequence sounds
       |> Task.map (\x -> NoOp)
       |> Effects.task
+-}
 
 
 {- extract the true response, concentrating on 200 statuses - assume other statuses are in error
@@ -188,27 +181,39 @@ viewPerformanceResult mr = case mr of
       Err errs -> "Fail: " ++ (toString errs)
 
 
-view : Signal.Address Action -> Model -> Html
-view address model =
+view : Model -> Html Msg
+view model =
   div []
     [ 
-      div [  ] [ text ("parsed abc result: " ++ (viewPerformanceResult model.performance)) ]
-    , button [ onClick address Play ] [ text "play" ]
+      button [ onClick (RequestLoadFonts "assets/soundfonts") ] [ text "load fonts" ]
+    , button [ onClick (LoadFile "abc/lillasystern.abc") ] [ text "load abc file" ]
+    , div [  ] [ text ("parsed abc result: " ++ (viewPerformanceResult model.performance)) ]
+    , button [ onClick Play ] [ text "play" ]
     ]
 
--- INPUTS
--- try to load the entire piano soundfont
-pianoFonts : Signal (Maybe SoundSample)
-pianoFonts = loadSoundFont (getAudioContext ()) "acoustic_grand_piano"
+-- THE ACTUAL WORK
+  
+{- make the next MIDI note -}
+makeMIDINote : (Float, Notable) -> MidiNote
+makeMIDINote ne = 
+  let 
+    (time, notable) = ne
+  in
+    case notable of
+       -- we've hit a Note
+       Note pitch velocity ->
+         MidiNote pitch time velocity
 
-signals : List (Signal Action)
-signals = 
-  if (isWebAudioEnabled) then 
-    [Signal.map LoadFont pianoFonts]
-  else
-    []
-
-
+{- make the MIDI notes - if we have a performance result from parsing the midi file, convert
+   the performance into a list of MidiNote
+-}
+makeMIDINotes :  Result String Performance -> MidiNotes
+makeMIDINotes perfResult = 
+  case perfResult of
+    Ok perf ->
+      List.map makeMIDINote perf
+    Err err ->
+      []
 
 
 

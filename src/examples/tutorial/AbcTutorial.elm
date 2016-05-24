@@ -1,91 +1,87 @@
-module AbcTutorial where
+module AbcTutorial exposing (..)
 
-import Effects exposing (Effects, Never, task)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (on, targetValue, onClick)
-import DynamicStyle exposing (hover)
+import Html.Events exposing (on, targetValue, onClick, onInput)
+import Html.App as Html
+{- import DynamicStyle exposing (hover) -}
 import Task exposing (Task, andThen, succeed, sequence, onError)
+import Process exposing (sleep)
 import List exposing (reverse)
 import Maybe exposing (Maybe, withDefault)
 import String exposing (toInt)
 import Result exposing (Result, formatError)
 import Array exposing (Array, get)
-import Dict exposing (Dict)
-import SoundFont exposing (..)
 import Abc exposing (..)
 import AbcPerformance exposing (melodyFromAbcResult)
 import Melody exposing (..)
 import Notable exposing (..)
 import Lessons exposing (..)
-import Debug exposing (..)
 import Json.Encode as Json
+import SoundFont.Ports exposing (..)
+import SoundFont.Types exposing (..)
+
+import Debug exposing (..)
+
+main =
+  Html.program
+    { init = (init, requestLoadFonts "assets/soundfonts"), update = update, view = view, subscriptions = subscriptions }
 
 -- MODEL
-type alias Sound = Task Effects.Never ()
-type alias Sounds = List Sound
 
 type alias Model =
-    { samples : Dict Int SoundSample
-    , loaded : Bool
-    , maybeContext : Maybe AudioContext
+    { fontsLoaded : Bool
     , abc : String
+    , playing : Bool
     , lessonIndex : Int
+    , duration : Float -- the tune duration in seconds
     , error : Maybe ParseError
-    , buttonsDisabled : Bool
     }
 
-init : String -> (Model, Effects Action)
-init topic =
-  ( { 
-       samples = Dict.empty
-    ,  loaded = False
-    ,  maybeContext = Nothing
+init : Model
+init =
+    { 
+       fontsLoaded = False
     ,  abc = example 0
+    ,  playing = False
     ,  lessonIndex = 0
+    ,  duration = 0.0
     ,  error = Nothing
-    ,  buttonsDisabled = True -- disabled until the soundfonts load
     }
-  , Effects.none
-  )
 
 -- UPDATE
 
-type Action
+type Msg
     = NoOp   
-    | LoadFont (Maybe SoundSample)
+    | FontsLoaded Bool
     | Abc String
     | Play     
-    | ShowButtons -- immediately after play has ended
+    | PlayStarted Bool    -- response from the player that it's started
+    | PlayCompleted       -- the play has completed (we compute the time ourselves)
+    | ShowButtons         -- immediately after play has ended
     | Move Bool
     | MoveToEnd Bool
     | Error ParseError
 
-update : Action -> Model -> (Model, Effects Action)
-update action model =
-  case action of
-    NoOp -> (model, Effects.none )
+update : Msg -> Model -> (Model, Cmd Msg)
+update msg model =
+  case msg of
+    NoOp -> (model, Cmd.none )
 
-    ShowButtons -> ( {model | buttonsDisabled = False } , Effects.none )
+    ShowButtons -> ( {model | playing = False } , Cmd.none )
 
-    LoadFont mss ->
-      case mss of
-        Nothing ->
-          (model, Effects.none)
-        Just ss -> 
-          case ss.name of
-            "end" ->
-               ( finaliseAudioContext model, checkAudio )
-            _ -> 
-              let pitch = toInt ss.name
-              in
-                ( { model | samples = Dict.insert pitch ss model.samples }, 
-                  Effects.none
-                )        
+    FontsLoaded loaded ->
+      ( { model | fontsLoaded = loaded }
+      , Cmd.none
+      )  
 
-    Abc s ->  ( { model | abc = s }, Effects.none )     
+    Abc s ->  ( { model | abc = s }, Cmd.none )     
 
-    Play -> ( { model | error = Nothing, buttonsDisabled = True }, playAbc model)   
+    Play -> playAbc model   
+
+    PlayStarted _ -> (model, (suspend model.duration) )
+
+    PlayCompleted -> ( { model | playing = False }, Cmd.none)   
 
     Move b ->
       let 
@@ -96,7 +92,7 @@ update action model =
       in
         ( { model | lessonIndex = next
           , abc = (example next) 
-          , error = Nothing }, Effects.none ) 
+          , error = Nothing }, Cmd.none ) 
 
     MoveToEnd b ->
       let 
@@ -107,115 +103,65 @@ update action model =
       in
         ( { model | lessonIndex = next
           , abc = (example next)
-          , error = Nothing }, Effects.none ) 
+          , error = Nothing }, Cmd.none ) 
 
     Error pe ->  ( { model | error = Just pe }, showButtonsAction  ) 
 
-{- finalise the audio context in the model -}
-finaliseAudioContext : Model -> Model
-finaliseAudioContext m =
+
+-- SUBSCRIPTIONS
+fontsLoadedSub : Sub Msg
+fontsLoadedSub  =
+  fontsLoaded FontsLoaded
+
+playSequenceStartedSub : Sub Msg
+playSequenceStartedSub  =
+  playSequenceStarted PlayStarted
+
+subscriptions : Model -> Sub Msg
+subscriptions m =
+  Sub.batch [fontsLoadedSub, playSequenceStartedSub]
+
+-- COMMANDS
+
+{- sleep for a number of seconds -}
+suspend : Float -> Cmd Msg
+suspend secs =
   let
-    ctx = 
-      if (isWebAudioEnabled) then
-        Just (getAudioContext ())
-      else
-        Nothing
-  in
-    { m | maybeContext = ctx, loaded = True }
-
-
-{- inspect the next performance event and generate the appropriate sound command 
-   which is done by looking up the sound fonts.  
--}
-nextSound : AudioContext -> Dict Int SoundSample -> (Float, Notable) -> Sound
-nextSound ctx samples ne = 
-  let 
-    (time, notable) = ne
-  in
-    case notable of
-      -- we've hit a Note
-      Note pitch velocity ->
-        let 
-          sample = Dict.get pitch samples
-          soundBite = { mss = sample, time = time, gain = velocity }
-        in
-          maybePlay ctx soundBite
-           
-
-{- make the sounds - if we have a performance result from parsing the midi file, convert
-   the performance into a list of soundbites (aka Sounds)
--}
-makeSounds :  Maybe AudioContext -> Dict Int SoundSample -> Result ParseError Performance -> Sounds 
-makeSounds mctx ss perfResult = 
-     case perfResult of
-       Ok perf ->
-         case mctx of
-           Just ctx ->
-             List.map (nextSound ctx ss) perf
-           _ ->
-             []
-       Err err ->
-         []
- 
-{- play the sounds as a single uninterruptible task -}
-playSounds : Result ParseError Performance -> Sounds -> Effects Action
-playSounds rp sounds =   
-   playAndSuspend rp sounds
-        |> Task.map (\_ -> ShowButtons)
-        |> Effects.task      
-      
-{- play the sounds and suspend the UI -}      
-playAndSuspend :  Result ParseError Performance -> Sounds -> Task Never Action
-playAndSuspend rp sounds =
-   sequence sounds   
-     `andThen` (\_ -> suspend rp)      
-      
-{- sleep for a number od seconds -}
-suspend : Result ParseError Performance -> Task Never Action
-suspend rp =
-  let
-    time = performanceDuration rp * 1000
+    _ = log "suspend time" secs
+    time = secs * 1000
   in 
-    Task.sleep time
-      `andThen` (\_ -> succeed (NoOp))
+    Process.sleep time
+      |> Task.perform (\_ -> NoOp) (\_ -> PlayCompleted)    
     
 {- just the ShowButton action wrapped in a Task -}
-showButtons : Task Never Action
+showButtons : Task Never Msg
 showButtons = succeed (ShowButtons)            
 
 {- and as an effect -}
-showButtonsAction : Effects Action
+showButtonsAction : Cmd Msg
 showButtonsAction =
-  showButtons
-  |> Effects.task
+  Task.perform (\_ -> NoOp) (\_ -> NoOp) showButtons
 
-{- check Audio is present and show the buttons if so -}
-checkAudio : Effects Action
-checkAudio =
-  if (isWebAudioEnabled) then
-    showButtons
-      |> Effects.task
-  else
-    Effects.none
+
      
-performanceDuration : Result ParseError Performance  -> Float
-performanceDuration rp =
+{- calculate the performance duration in seconds -}
+performanceDuration : MidiNotes -> Float
+performanceDuration notes =
    let
-      notes = log "performance notes" (Result.withDefault [] rp)
-      maybeLastNote = List.head notes
+     maybeLastNote = List.head (List.reverse notes)
    in 
-      case maybeLastNote of
-        Nothing -> log "nothing" 0.0
-        Just ne -> log "Just" (fst ne)  -- the accumulated time
+     case maybeLastNote of
+       Nothing -> 0.0
+       Just n -> n.timeOffset  -- the accumulated time
 
-returnError : ParseError -> Effects Action
+returnError : ParseError -> Cmd Msg
 returnError e =
   Task.succeed (Error e)
-    |> Effects.task
+    |> Task.perform (\_ -> NoOp) (\_ -> NoOp)
     
 terminateLine : String -> String
 terminateLine s =
-  s ++ "\r\n" 
+  s ++ "|\r\n" 
 
 {- cast a String to an Int -}
 toInt : String -> Int
@@ -230,20 +176,90 @@ toPerformance ml =
      Result.map (fromMelodyLine 0.0) melody
 
     
-playAbc : Model -> Effects Action
+{- play the ABC and return the duration in the amended model -}
+playAbc : Model -> (Model, Cmd Msg)
 playAbc m = 
-  let pr = 
-    m.abc
-      |> terminateLine
-      |> parse 
-      |> melodyFromAbcResult 
-      |> toPerformance
-  in case pr of
-    Ok _ ->
-      makeSounds m.maybeContext m.samples pr
-        |> playSounds pr
-    Err e ->
-      returnError e
+  let 
+    notes = 
+      m.abc
+        |> terminateLine
+        |> parse 
+        |> melodyFromAbcResult 
+        |> toPerformance
+        |> makeMIDINotes
+    duration =
+      performanceDuration (List.reverse notes)
+  in 
+    ( { m | playing = True
+          , duration = duration }, requestPlayNoteSequence notes )    
+
+
+
+-- VIEW
+
+viewError : Maybe ParseError -> String
+viewError me =
+  case me of
+    Nothing -> ""
+    Just e -> parseError e 
+
+view : Model -> Html Msg
+view model =
+  if (model.fontsLoaded) then
+    div [ centreStyle ]
+      [  
+         h1 [ ] [ text "ABC Tutorial" ]   
+      ,  h2 [ ] [ text (title model.lessonIndex) ]     
+      ,  textarea 
+           [
+           value  (instruction model.lessonIndex) 
+           , instructionStyle
+           , readonly True
+           , cols 96
+           , rows 6
+           ]
+           [ ]
+      ,  fieldset [ fieldsetStyle ]
+           [
+             legend [ legendStyle ] [ text "you can edit the text inside the box and then hit play" ]
+           , textarea
+               ([ 
+               placeholder "abc"
+               , value model.abc
+               , onInput Abc 
+               , taStyle
+               , cols 70
+               , rows 12
+               , autocomplete False
+               , spellcheck False
+               , autofocus True
+               ] ++ highlights model)
+               [  ] 
+           ]
+      ,  div
+         [ centreStyle ]       
+           [  
+              button ( buttonAttributes model.playing (MoveToEnd False))
+                       [ text "first" ]
+           ,  button ( buttonAttributes model.playing (Move False))
+                       [ text "previous" ]
+           ,  button ( buttonAttributes model.playing Play)
+                       [ text "play" ]
+           ,  button ( buttonAttributes model.playing (Move True))
+                       [ text "next" ]
+           ,  button ( buttonAttributes model.playing (MoveToEnd True))
+                       [ text "last" ]
+           ]
+      ,  div 
+         [ centreStyle ] 
+           [ p [] [ text (hint model.lessonIndex) ] 
+           , p [] [ text (viewError model.error) ] 
+           ]
+      ]
+  else
+    div [ centreStyle ]
+      [  p [ ] [ text "It seems as if your browser does not support web-audio.  Perhaps try Chrome" ]
+      ] 
 
 title : Int -> String
 title i =
@@ -278,75 +294,9 @@ hint i =
     Just l -> l.hint
        
 
--- VIEW
-
-viewError : Maybe ParseError -> String
-viewError me =
-  case me of
-    Nothing -> ""
-    Just e -> parseError e 
-
-view : Signal.Address Action -> Model -> Html
-view address model =
-  if (isWebAudioEnabled) then
-    div [ centreStyle ]
-      [  
-         h1 [ ] [ text "ABC Tutorial" ]   
-      ,  h2 [ ] [ text (title model.lessonIndex) ]     
-      ,  textarea 
-           [
-           value  (instruction model.lessonIndex) 
-           , instructionStyle
-           , readonly True
-           , cols 96
-           , rows 6
-           ]
-           [ ]
-      ,  fieldset [ fieldsetStyle ]
-           [
-             legend [ legendStyle ] [ text "you can edit the text inside the box and then hit play" ]
-           , textarea
-               ([ 
-               placeholder "abc"
-               , value model.abc
-               , on "input" targetValue (\a -> Signal.message address (Abc a))
-               , taStyle
-               , cols 70
-               , rows 12
-               , autocomplete False
-               , spellcheck False
-               , autofocus True
-               ] ++ highlights model)
-               [  ] 
-           ]
-      ,  div
-         [ centreStyle ]       
-           [  
-              button ( buttonAttributes model.buttonsDisabled address (MoveToEnd False))
-                       [ text "first" ]
-           ,  button ( buttonAttributes model.buttonsDisabled address (Move False))
-                       [ text "previous" ]
-           ,  button ( buttonAttributes model.buttonsDisabled address Play)
-                       [ text "play" ]
-           ,  button ( buttonAttributes model.buttonsDisabled address (Move True))
-                       [ text "next" ]
-           ,  button ( buttonAttributes model.buttonsDisabled address (MoveToEnd True))
-                       [ text "last" ]
-           ]
-      ,  div 
-         [ centreStyle ] 
-           [ p [] [ text (hint model.lessonIndex) ] 
-           , p [] [ text (viewError model.error) ] 
-           ]
-      ]
-  else
-    div [ centreStyle ]
-      [  p [ ] [ text "It seems as if your browser does not support web-audio.  Perhaps try Chrome" ]
-      ] 
-
 
 {- style a textarea -}
-taStyle : Attribute
+taStyle : Attribute Msg
 taStyle =
   style
     [
@@ -362,7 +312,7 @@ taStyle =
 
 
 {- style the instructions section -}
-instructionStyle : Attribute
+instructionStyle : Attribute Msg
 instructionStyle =
   style
     [
@@ -378,7 +328,7 @@ instructionStyle =
 
 
 {- style a centered component -}    
-centreStyle : Attribute
+centreStyle : Attribute Msg
 centreStyle =
   style
      [
@@ -387,16 +337,16 @@ centreStyle =
      ]
 
 {- gather together all the button attributes -}
-buttonAttributes : Bool -> Signal.Address Action -> Action -> List Attribute
-buttonAttributes isDisabled address action =
+buttonAttributes : Bool -> Msg -> List (Attribute Msg)
+buttonAttributes isDisabled msg =
   hoverButton isDisabled ++
     [ bStyle isDisabled
-    , onClick address action
+    , onClick msg
     , disabled isDisabled 
     ] 
 
 {- style a button -}
-bStyle : Bool -> Attribute
+bStyle : Bool -> Attribute Msg
 bStyle disabled = 
   let
     basecss =
@@ -437,15 +387,16 @@ bStyle disabled =
     style (basecss ++ colour)
 
 {- hover over a button -}
-hoverButton : Bool -> List Attribute
-hoverButton disabled =      
-  if disabled then
+hoverButton : Bool -> List (Attribute msg)
+hoverButton enabled =      
+  if enabled then
+     {- hover [("background-color","#67d665","#669966")] -}
     []
   else
-    hover [("background-color","#67d665","#669966")]
+    []
 
 {- style a fieldset -}
-fieldsetStyle : Attribute
+fieldsetStyle : Attribute Msg
 fieldsetStyle =
   style 
     [
@@ -458,7 +409,7 @@ fieldsetStyle =
     ]
 
 {- style a fieldset legend -}
-legendStyle : Attribute
+legendStyle : Attribute Msg
 legendStyle = 
   style
    [
@@ -472,7 +423,7 @@ legendStyle =
    , ("padding", "0.3em 1em")
    ]
 
-highlights : Model -> List Attribute
+highlights : Model -> List (Attribute Msg)
 highlights model =
   let 
     mpe = model.error
@@ -489,18 +440,31 @@ highlights model =
        else
          []
 
--- INPUTS
+-- move this later
 
--- try to load the entire piano soundfont
-pianoFonts : Signal (Maybe SoundSample)
-pianoFonts = loadSoundFont (getAudioContext ()) "acoustic_grand_piano"
+{- make the next MIDI note -}
+makeMIDINote : (Float, Notable) -> MidiNote
+makeMIDINote ne = 
+  let 
+    (time, notable) = ne
+  in
+    case notable of
+       -- we've hit a Note
+       Note pitch velocity ->
+         MidiNote pitch time velocity
 
-signals : List (Signal Action)
-signals = 
-  if (isWebAudioEnabled) then 
-    [Signal.map LoadFont pianoFonts]
-  else
-    []
+{- make the MIDI notes - if we have a performance result from parsing the midi file, convert
+   the performance into a list of MidiNote
+-}
+makeMIDINotes :  Result ParseError Performance -> MidiNotes
+makeMIDINotes perfResult = 
+  case perfResult of
+    Ok perf ->
+      List.map makeMIDINote perf
+    Err err ->
+      []
+
+
 
 
 

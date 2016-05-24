@@ -1,9 +1,9 @@
-module Abc
+module Abc exposing
     (  parse
     ,  parseKeySignature
     ,  parseError
     ,  ParseError
-    ) where
+    ) 
 
 {-|  Library for parsing ABC transcriptions using parser combinators
      see http://abcnotation.com/wiki/abc:standard:v2.1

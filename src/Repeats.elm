@@ -1,11 +1,12 @@
-module Repeats ( Section
-               , Repeats
-               , RepeatState
-               , indexBar 
-               , defaultRepeatState
-               , finalise
-               , buildRepeatedMelody
-               ) where
+module Repeats exposing
+  ( Section
+  , Repeats
+  , RepeatState
+  , indexBar 
+  , defaultRepeatState
+  , finalise
+  , buildRepeatedMelody
+  ) 
 
 {-|  functions to index repeated RepeatState in an ABC performance and to build a full melody with repeats expanded
 

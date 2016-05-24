@@ -1,8 +1,8 @@
-module Music.Octave
+module Music.Octave exposing
   ( 
     up
   , down
-  ) where
+  ) 
 
 {-|  Move a tune up or down an octave
 

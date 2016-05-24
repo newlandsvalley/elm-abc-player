@@ -1,7 +1,7 @@
-module Notable ( Notable (..)
-               , Performance
-               , fromMelodyLine) where
-
+module Notable exposing
+  ( Notable (..)
+  , Performance
+  , fromMelodyLine) 
 
 import Melody exposing (..)
 import Maybe exposing (map, withDefault)

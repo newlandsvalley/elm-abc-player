@@ -1,18 +1,19 @@
-module AbcEditor where
+module AbcEditor exposing (..)
 
-import Effects exposing (Effects, Never, task)
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (on, targetValue, onClick)
-import DynamicStyle exposing (hover)
+import Html.Events exposing (on, targetValue, onClick, onInput)
+import Html.App as Html
+{- import DynamicStyle exposing (hover) -}
 import Task exposing (Task, andThen, succeed, sequence, onError)
+import Process exposing (sleep)
 import List exposing (reverse, isEmpty)
 import Maybe exposing (Maybe, withDefault)
 import String exposing (toInt, slice)
 import Result exposing (Result, formatError)
 import Array exposing (Array, get)
-import Dict exposing (Dict)
-import SoundFont exposing (..)
+import SoundFont.Ports exposing (..)
+import SoundFont.Types exposing (..)
 import Abc exposing (..)
 import AbcPerformance exposing (melodyFromAbcResult)
 import Abc.ParseTree exposing (AbcTune, PitchClass (..), Mode (..), Accidental (..), ModifiedKeySignature, KeySignature)
@@ -23,24 +24,26 @@ import Music.Octave exposing (up, down)
 import Melody exposing (..)
 import Notable exposing (..)
 import Debug exposing (..)
-import Json.Encode as Json
+import Json.Decode as Json exposing (succeed)
 
-{-| Beginnings of an ABC editor.  The eventual plan is to provide an editor which continually parses the ABC as it is entered and flags up errors.
+{-| An ABC editor.  It continually parses the ABC as it is entered and flags up errors.
     If the (checked) tune contains a key signature, then transposition options will be shown. 
 
 -}
 
+main =
+  Html.program
+    { init = (init, requestLoadFonts "assets/soundfonts"), update = update, view = view, subscriptions = subscriptions }
+
 -- MODEL
-type alias Sound = Task Effects.Never ()
-type alias Sounds = List Sound
 
 type alias Model =
-    { samples : Dict Int SoundSample
-    , loaded : Bool
+    {
+      fontsLoaded : Bool
     , playing : Bool
-    , maybeContext : Maybe AudioContext
     , abc : String
     , tuneResult : Result ParseError AbcTune
+    , duration : Float -- the tune duration in seconds
     }
 
 dummyError : ParseError
@@ -54,136 +57,56 @@ emptyTune : AbcTune
 emptyTune =
   ([], [])
 
-
-init : String -> (Model, Effects Action)
-init topic =
-  ( { 
-       samples = Dict.empty
-    ,  loaded = False
-    ,  playing = False
-    ,  maybeContext = Nothing
-    ,  abc = ""
-    ,  tuneResult = Ok emptyTune
-    }
-  , Effects.none
-  )
+init : Model
+init =
+  {       
+    fontsLoaded = False
+  , playing = False
+  , abc = ""
+  , tuneResult = Ok emptyTune
+  , duration = 0.0
+  }
 
 -- UPDATE
 
-type Action
+type Msg
     = NoOp   
-    | LoadFont (Maybe SoundSample)
+    | FontsLoaded Bool
     | Abc String
-    | Play     
-    | PlayCompleted    
+    | Play                -- request that a tune plays
+    | PlayStarted Bool    -- response from the player that it's started
+    | PlayCompleted       -- the play has completed (we compute the time ourselves)
     | Transpose String
     | MoveOctave Bool
     | TuneResult (Result ParseError AbcTune)
 
-update : Action -> Model -> (Model, Effects Action)
-update action model =
-  case action of
-    NoOp -> (model, Effects.none )
+update : Msg -> Model -> (Model, Cmd Msg)
+update msg model =
+  case msg of
+    NoOp -> (model, Cmd.none )
 
-    LoadFont mss ->
-      case mss of
-        Nothing ->
-          (model, Effects.none)
-        Just ss -> 
-          case ss.name of
-            "end" ->
-               ( finaliseAudioContext model, Effects.none )
-            _ -> 
-              let pitch = toInt ss.name
-              in
-                ( { model | samples = Dict.insert pitch ss model.samples }, 
-                  Effects.none
-                )        
+    FontsLoaded loaded ->
+      ( { model | fontsLoaded = loaded }
+      , Cmd.none
+      )  
 
     Abc s ->  ( { model | abc = s }, checkAbc s )     
 
-    Play -> ( { model | playing = True }, playAbc model)   
+    Play -> playAbc model   
 
-    PlayCompleted -> ( { model | playing = False }, Effects.none)   
+    PlayStarted _ -> (model, (suspend model.duration) )
 
-    Transpose s -> (transpose s model, Effects.none )
+    PlayCompleted -> ( { model | playing = False }, Cmd.none)   
+
+    Transpose s -> (transpose s model, Cmd.none )
 
     MoveOctave isUp -> 
       if isUp then 
-        (moveOctave up model, Effects.none )
+        (moveOctave up model, Cmd.none )
       else
-        (moveOctave down model, Effects.none )
+        (moveOctave down model, Cmd.none )
 
-    TuneResult tr ->  ( { model | tuneResult = tr }, Effects.none) 
-
-{- finalise the audio context in the model -}
-finaliseAudioContext : Model -> Model
-finaliseAudioContext m =
-  let
-    ctx = 
-      if (isWebAudioEnabled) then
-        Just (getAudioContext ())
-      else
-        Nothing
-  in
-    { m | maybeContext = ctx, loaded = True }
-
-
-{- inspect the next performance event and generate the appropriate sound command 
-   which is done by looking up the sound fonts.  
--}
-nextSound : AudioContext -> Dict Int SoundSample -> (Float, Notable) -> Sound
-nextSound ctx samples ne = 
-  let 
-    (time, notable) = ne
-  in
-    case notable of
-      -- we've hit a Note
-      Note pitch velocity ->
-        let 
-          sample = Dict.get pitch samples
-          soundBite = { mss = sample, time = time, gain = velocity }
-        in
-          maybePlay ctx soundBite
-           
-
-{- make the sounds - if we have a performance result from parsing the midi file, convert
-   the performance into a list of soundbites (aka Sounds)
--}
-makeSounds :  Maybe AudioContext -> Dict Int SoundSample -> Result ParseError Performance -> Sounds 
-makeSounds mctx ss perfResult = 
-     case perfResult of
-       Ok perf ->
-         case mctx of
-           Just ctx ->
-             List.map (nextSound ctx ss) perf
-           _ ->
-             []
-       Err err ->
-         []
- 
-{- play the sounds as a single uninterruptible task -}
-playSounds : Result ParseError Performance -> Sounds -> Effects Action
-playSounds rp sounds =   
-   playAndSuspend rp sounds
-        |> Task.map (\_ -> PlayCompleted)
-        |> Effects.task      
-      
-{- play the sounds and suspend the UI -}      
-playAndSuspend :  Result ParseError Performance -> Sounds -> Task Never Action
-playAndSuspend rp sounds =
-   sequence sounds   
-     `andThen` (\_ -> suspend rp)      
-      
-{- sleep for a number of seconds -}
-suspend : Result ParseError Performance -> Task Never Action
-suspend rp =
-  let
-    time = performanceDuration rp * 1000
-  in 
-    Task.sleep time
-      `andThen` (\_ -> succeed (NoOp))
-    
+    TuneResult tr ->  ( { model | tuneResult = tr }, Cmd.none) 
 
 {- a different attempt at checking if buttons are enabled -}
 areButtonsEnabled : Model -> Bool
@@ -193,31 +116,29 @@ areButtonsEnabled m =
       not (m.playing)
     Err _ -> False
 
-{- check Audio is present and show the buttons if so -}
-{-
-checkAudio : Effects Action
-checkAudio =
-  if (isWebAudioEnabled) then
-    showButtons
-      |> Effects.task
-  else
-    Effects.none
--}
-     
-performanceDuration : Result ParseError Performance  -> Float
-performanceDuration rp =
+{- sleep for a number of seconds -}
+suspend : Float -> Cmd Msg
+suspend secs =
+  let
+    _ = log "suspend time" secs
+    time = secs * 1000
+  in 
+    Process.sleep time
+      |> Task.perform (\_ -> NoOp) (\_ -> PlayCompleted)
+    
+{- calculate the performance duration in seconds -}
+performanceDuration : MidiNotes -> Float
+performanceDuration notes =
    let
-      notes = log "performance notes" (Result.withDefault [] rp)
-      maybeLastNote = List.head notes
+     maybeLastNote = List.head (List.reverse notes)
    in 
-      case maybeLastNote of
-        Nothing -> 0.0
-        Just ne -> (fst ne)  -- the accumulated time
+     case maybeLastNote of
+       Nothing -> 0.0
+       Just n -> n.timeOffset  -- the accumulated time
 
-returnTuneResult : Result ParseError AbcTune -> Effects Action
+returnTuneResult : Result ParseError AbcTune -> Cmd Msg
 returnTuneResult r =
-  Task.succeed (TuneResult r)
-    |> Effects.task
+  Task.perform (\_ -> NoOp) TuneResult (Task.succeed r)
     
 terminateLine : String -> String
 terminateLine s =
@@ -235,7 +156,8 @@ toPerformance ml =
    in
      Result.map (fromMelodyLine 0.0) melody
 
-checkAbc : String -> Effects Action
+{- continually parse the ABC after every key stroke -}
+checkAbc : String -> Cmd Msg
 checkAbc abc = 
   let 
     terminatedAbc = terminateLine abc
@@ -244,20 +166,23 @@ checkAbc abc =
   in 
     returnTuneResult (pr)
     
-playAbc : Model -> Effects Action
+{- play the ABC and return the duration in the amended model -}
+playAbc : Model -> (Model, Cmd Msg)
 playAbc m = 
-  let pr = 
-    m.abc
-      |> terminateLine
-      |> parse 
-      |> melodyFromAbcResult 
-      |> toPerformance
-  in case pr of
-    Ok _ ->
-      makeSounds m.maybeContext m.samples pr
-        |> playSounds pr
-    Err e ->
-      Effects.none
+  let 
+    notes = 
+      m.abc
+        |> terminateLine
+        |> parse 
+        |> melodyFromAbcResult 
+        |> toPerformance
+        |> makeMIDINotes
+    duration =
+      performanceDuration (List.reverse notes)
+  in 
+    ( { m | playing = True
+          , duration = duration }, requestPlayNoteSequence notes )     
+
 
 {- transpose the tune to a new key -}
 transpose : String -> Model -> Model
@@ -295,11 +220,24 @@ moveOctave movefn model =
        in 
         { model | abc = newAbc, tuneResult =  (Ok newTune) }            
      _ -> model
+
+-- SUBSCRIPTIONS
+fontsLoadedSub : Sub Msg
+fontsLoadedSub  =
+  fontsLoaded FontsLoaded
+
+playSequenceStartedSub : Sub Msg
+playSequenceStartedSub  =
+  playSequenceStarted PlayStarted
+
+subscriptions : Model -> Sub Msg
+subscriptions m =
+  Sub.batch [fontsLoadedSub, playSequenceStartedSub]
       
 
 -- VIEW
 
-viewError : Model -> Html
+viewError : Model -> Html Msg
 viewError m =
   let 
     tuneResult = m.tuneResult
@@ -327,19 +265,19 @@ viewError m =
                 ]
       _ -> text ""
 
-view : Signal.Address Action -> Model -> Html
-view address model =
-  if (isWebAudioEnabled) then
+view : Model -> Html Msg
+view model =
+  if (model.fontsLoaded) then
     div [ ]
       [  
          h1 [ centreStyle ] [ text "ABC Editor" ]   
       ,  div [ leftPaneStyle ]
            [ span [ leftPanelWidgetStyle ] [text "Transpose to:"]
-           , transpositionMenu address model 
+           , transpositionMenu model 
            , span [ leftPanelWidgetStyle ] [text "Move octave:"]     
-           , button ( buttonAttributes (areButtonsEnabled model) address (MoveOctave True))
+           , button ( buttonAttributes (areButtonsEnabled model) (MoveOctave True))
                        [ text "up" ]   
-           , button ( buttonAttributes (areButtonsEnabled model) address (MoveOctave False))
+           , button ( buttonAttributes (areButtonsEnabled model) (MoveOctave False))
                        [ text "down" ] 
            ]
       ,  div [ rightPaneStyle ]
@@ -351,7 +289,7 @@ view address model =
                [ 
                placeholder "abc"
                , value model.abc
-               , on "input" targetValue (\a -> Signal.message address (Abc a))
+               , onInput Abc 
                , taStyle
                , cols 70
                , rows 16
@@ -365,7 +303,7 @@ view address model =
              [  ]       
                [  
  
-                 button ( buttonAttributes (areButtonsEnabled model) address Play)
+                 button ( buttonAttributes (areButtonsEnabled model) Play)
                        [ text "play" ] 
  
                ]
@@ -381,20 +319,23 @@ view address model =
       [  p [ ] [ text "It seems as if your browser does not support web-audio.  Perhaps try Chrome." ]
       ] 
 
+
 {- an active menu of transposition options -} 
-transpositionMenu : Signal.Address Action -> Model -> Html
-transpositionMenu address m =
-  let mKeySig =
-    case
-      m.tuneResult of
-        Ok tune -> getKeySig tune
-        _ -> Nothing
+transpositionMenu : Model -> Html Msg
+transpositionMenu m =
+  let 
+    mKeySig =
+      case
+        m.tuneResult of
+          Ok tune -> getKeySig tune
+          _ -> Nothing
   in
     case mKeySig of
       Just mks ->
         select [ leftPanelWidgetStyle
                , (disabled m.playing)
-               , on "change" targetValue (\a -> Signal.message address (Transpose a)) ] 
+               , on "change" (Json.map Transpose targetValue)
+               ] 
           (transpositionOptions mks)
       Nothing -> 
         select [ leftPanelWidgetStyle
@@ -409,7 +350,7 @@ transpositionMenu address m =
    The mode of each option always matches the current mode and 
    the selected option matches the current key
 -}
-transpositionOptions : ModifiedKeySignature -> List Html
+transpositionOptions : ModifiedKeySignature -> List (Html Msg)
 transpositionOptions mks =
   let
     ks = fst mks
@@ -453,10 +394,8 @@ transpositionOptions mks =
       _ -> allModes
 
 
- 
-
-{- return a (selected true) attriubute if the pattern key signature matches the target -}
-selectedKey : KeySignature -> KeySignature -> Attribute
+{- return a (selected true) attribute if the pattern key signature matches the target -}
+selectedKey : KeySignature -> KeySignature -> Attribute Msg
 selectedKey target pattern =
   let
     isMatched = (target.pitchClass == pattern.pitchClass) && (target.accidental == pattern.accidental)
@@ -464,7 +403,7 @@ selectedKey target pattern =
     selected isMatched
 
 {- display a key signature as text -}
-displayKeySig : KeySignature -> Html
+displayKeySig : KeySignature -> Html Msg
 displayKeySig ks =
   let 
     accidental =
@@ -475,9 +414,8 @@ displayKeySig ks =
   in
     text ( toString ks.pitchClass ++ accidental ++ " " ++ toString ks.mode )
 
-
 {- style a textarea -}
-taStyle : Attribute
+taStyle : Attribute Msg
 taStyle =
   style
     [
@@ -493,7 +431,7 @@ taStyle =
 
 
 {- style the instructions section -}
-instructionStyle : Attribute
+instructionStyle : Attribute msg
 instructionStyle =
   style
     [
@@ -507,7 +445,7 @@ instructionStyle =
     , ("font", "100% \"Trebuchet MS\", Verdana, sans-serif")
     ]
 
-leftPanelWidgetStyle : Attribute
+leftPanelWidgetStyle : Attribute msg
 leftPanelWidgetStyle =
   style
     [      
@@ -529,7 +467,7 @@ leftPanelWidgetStyle =
 -}
 
 {- style a centered component -}    
-centreStyle : Attribute
+centreStyle : Attribute msg
 centreStyle =
   style
      [
@@ -537,7 +475,7 @@ centreStyle =
      ,  ("margin", "auto") 
      ]
 
-leftPaneStyle : Attribute
+leftPaneStyle : Attribute msg
 leftPaneStyle =
   style
      [
@@ -546,7 +484,7 @@ leftPaneStyle =
      
      ]
 
-rightPaneStyle : Attribute
+rightPaneStyle : Attribute msg
 rightPaneStyle =
   style
      [
@@ -554,16 +492,16 @@ rightPaneStyle =
      ]
 
 {- gather together all the button attributes -}
-buttonAttributes : Bool -> Signal.Address Action -> Action -> List Attribute
-buttonAttributes isEnabled address action =
+buttonAttributes : Bool -> Msg -> List (Attribute Msg)
+buttonAttributes isEnabled msg =
   hoverButton isEnabled ++
     [ bStyle isEnabled
-    , onClick address action
+    , onClick msg
     , disabled (not isEnabled)
     ] 
 
 {- style a button -}
-bStyle : Bool -> Attribute
+bStyle : Bool -> Attribute msg
 bStyle enabled = 
   let
     basecss =
@@ -605,16 +543,17 @@ bStyle enabled =
     style (basecss ++ colour)
 
 {- hover over a button -}
-hoverButton : Bool -> List Attribute
+hoverButton : Bool -> List (Attribute msg)
 hoverButton enabled =      
   if enabled then
-     hover [("background-color","#67d665","#669966")]
+     {- hover [("background-color","#67d665","#669966")] -}
+    []
   else
     []
   
 
 {- style a fieldset -}
-fieldsetStyle : Attribute
+fieldsetStyle : Attribute msg
 fieldsetStyle =
   style 
     [
@@ -626,24 +565,12 @@ fieldsetStyle =
     , ("display", "inline-block")
     ]
 
-errorHighlightStyle : Attribute
+errorHighlightStyle : Attribute msg
 errorHighlightStyle =
   style
     [ ("color", "red")
     ]
 
--- INPUTS
-
--- try to load the entire piano soundfont
-pianoFonts : Signal (Maybe SoundSample)
-pianoFonts = loadSoundFont (getAudioContext ()) "acoustic_grand_piano"
-
-signals : List (Signal Action)
-signals = 
-  if (isWebAudioEnabled) then 
-    [Signal.map LoadFont pianoFonts]
-  else
-    []
 
 -- key signatures
 key : PitchClass -> Mode -> KeySignature
@@ -654,6 +581,31 @@ sharpKey pc m = { pitchClass = pc, accidental = Just Sharp, mode = m }
 
 flatKey : PitchClass -> Mode -> KeySignature
 flatKey pc m = { pitchClass = pc, accidental = Just Flat, mode = m }
+
+-- move this later
+
+{- make the next MIDI note -}
+makeMIDINote : (Float, Notable) -> MidiNote
+makeMIDINote ne = 
+  let 
+    (time, notable) = ne
+  in
+    case notable of
+       -- we've hit a Note
+       Note pitch velocity ->
+         MidiNote pitch time velocity
+
+{- make the MIDI notes - if we have a performance result from parsing the midi file, convert
+   the performance into a list of MidiNote
+-}
+makeMIDINotes :  Result ParseError Performance -> MidiNotes
+makeMIDINotes perfResult = 
+  case perfResult of
+    Ok perf ->
+      List.map makeMIDINote perf
+    Err err ->
+      []
+
 
 
 

@@ -4,9 +4,5 @@ elm.js
 Main.html
 index.html
 abc-player.js
-compilep.sh
-compilet.sh
-compilee.sh
-compiletjs.sh
 /deprecated/
-/src/test/
+distjs/*.js

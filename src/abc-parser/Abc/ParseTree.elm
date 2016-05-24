@@ -1,4 +1,4 @@
-module Abc.ParseTree
+module Abc.ParseTree exposing
     ( AbcTune
     , TuneHeaders
     , TuneBody
@@ -23,9 +23,9 @@ module Abc.ParseTree
     , Mode (..)
     , Accidental (..)
     , PitchClass (..)
-    , Broken(..)
+    , Broken (..)
     , middlecOctave
-    ) where
+    ) 
 
 {-|  The ABC parser and ABC notation tree
 
@@ -42,6 +42,7 @@ module Abc.ParseTree
     , AbcNote
     , AbcChord
     , Bar
+    , Thickness
     , Repeat
     , NoteDuration
     , KeySignature
@@ -124,7 +125,7 @@ type Music
   | Ignore
   | Continuation
 
-{-| a bar line thickness -}
+{-| a bar line Thickness -}
 type Thickness =
     Thin
   | ThinThin
@@ -171,7 +172,7 @@ type Accidental =
   | DoubleFlat
   | Natural
 
-{-| An white note on the piano -}
+{-| A white note on the piano -}
 type PitchClass =
     A 
   | B

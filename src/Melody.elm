@@ -1,8 +1,9 @@
-module Melody ( NoteEvent (..)
-              , MelodyLine
-              , SingleNote
-              , ABar
-              ) where
+module Melody exposing
+  ( NoteEvent (..)
+  , MelodyLine
+  , SingleNote
+  , ABar
+  ) 
 
 {-|  Data structures for describing an ABC melody  (i.e just a succession of notes and durations)
 

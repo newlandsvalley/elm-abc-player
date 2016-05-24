@@ -1,8 +1,8 @@
-module Combine.Extra 
+module Combine.Extra exposing
    ( manyTill'
    , leftBiasedOr
    )
-   where
+   
 
 {-|  Extension functions to elm-combine to allow custom error-reporting
 
@@ -17,7 +17,6 @@ module Combine.Extra
 import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
-import Debug exposing (..)
 
 {-   Provide a version of manyTill that preserves the error position of the 'many' rather than of the 'end'
      Many thanks to Bogdan Papa for helping me with this

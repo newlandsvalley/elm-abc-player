@@ -1,7 +1,7 @@
-module Lessons
+module Lessons exposing
   ( Lesson
   , lessons
-  ) where
+  ) 
 
 {-|  Lessons in learning ABC
 

@@ -1,1 +1,1 @@
-elm-make src/examples/tutorial/Main.elm --output=Main.html
+elm-make src/examples/tutorial/AbcTutorial.elm --output=distjs/elmAbcTutorial.js

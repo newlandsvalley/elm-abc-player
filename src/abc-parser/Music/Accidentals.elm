@@ -1,12 +1,11 @@
-module Music.Accidentals
+module Music.Accidentals exposing
   ( Accidentals
   , empty
   , add
   , fromKeySet
   , lookup
   , member
-  -- , isOverriddenKey
-  ) where
+  ) 
   
   
 {-|  private module to provide a type-safe interface into handling
@@ -69,28 +68,5 @@ member ka accs =
     (Just acc) == macc
 
 
-{-| lookup a KeyAccidental in the key set and see if it has been overridden in the bar
-    (e.g. by an explicit naturalisation of a key accidental
 
-isOverriddenKey : KeyAccidental -> KeySet -> Bool
-isOverriddenKey ka ks =
-  let
-    keyAccs = fromKeySet ks
-  in
-    isOverridden ka keyAccs
--}
-
-{-| lookup a KeyAccidental and see if its pitch class exists but its accidental value differs 
-isOverridden : KeyAccidental -> Accidentals -> Bool
-isOverridden ka accs =
-  let
-    (pc, acc) = ka
-    macc = Dict.get (toString pc) accs
-  in
-    case macc of
-      (Just someacc) -> acc /= someacc
-      _ -> False
--}
-    
-   
 

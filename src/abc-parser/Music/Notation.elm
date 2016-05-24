@@ -1,4 +1,4 @@
-module Music.Notation
+module Music.Notation exposing
   ( MidiPitch
   , AbcTempo
   , NoteTime
@@ -18,7 +18,7 @@ module Music.Notation
   , noteDuration
   , chordalNoteDuration
   , transposeKeySignatureBy
-  ) where
+  ) 
 
 {-|  Helper functions for making more musical sense of the parse tree
 
@@ -252,7 +252,7 @@ transposeKeySignatureBy i mks =
         flatScale
     -- now look up the transposed key at the new index
     (pc, ma) = 
-      getAt scale newIndex
+      getAt newIndex scale
         |> withDefault (C, Natural)
     -- modify the key accidentals likewise
     accs = List.map (transposeKeyAccidentalBy i) keyaccs
@@ -424,7 +424,7 @@ lookUp s i =
       else
         modi
   in
-    getAt s index
+    getAt index s
       |> withDefault (C, Natural)
     
 -- provide the Major scale for the pitch class  
@@ -527,7 +527,7 @@ transposeKeyAccidentalBy i ka =
        DoubleFlat -> (-2, flatScale)
        Natural -> (0, sharpScale)
   in
-    getAt scale (index + modifier + i)
+    getAt (index + modifier + i) scale 
       |> withDefault (C, Natural)
 
 

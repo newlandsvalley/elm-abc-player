@@ -1,9 +1,9 @@
-module Music.Transposition
+module Music.Transposition exposing
   ( 
     keyDistance
   , transposeNote
   , transposeTo
-  ) where
+  ) 
 
 {-|  Experimental Module for tune transposition
 
