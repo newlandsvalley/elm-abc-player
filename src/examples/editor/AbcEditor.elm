@@ -23,8 +23,9 @@ import Music.Transposition exposing (transposeTo)
 import Music.Octave exposing (up, down)
 import Melody exposing (..)
 import Notable exposing (..)
-import Debug exposing (..)
+import MidiNotes exposing (..)
 import Json.Decode as Json exposing (succeed)
+import Debug exposing (..)
 
 {-| An ABC editor.  It continually parses the ABC as it is entered and flags up errors.
     If the (checked) tune contains a key signature, then transposition options will be shown. 
@@ -126,16 +127,6 @@ suspend secs =
     Process.sleep time
       |> Task.perform (\_ -> NoOp) (\_ -> PlayCompleted)
     
-{- calculate the performance duration in seconds -}
-performanceDuration : MidiNotes -> Float
-performanceDuration notes =
-   let
-     maybeLastNote = List.head (List.reverse notes)
-   in 
-     case maybeLastNote of
-       Nothing -> 0.0
-       Just n -> n.timeOffset  -- the accumulated time
-
 returnTuneResult : Result ParseError AbcTune -> Cmd Msg
 returnTuneResult r =
   Task.perform (\_ -> NoOp) TuneResult (Task.succeed r)
@@ -147,14 +138,6 @@ terminateLine s =
 {- cast a String to an Int -}
 toInt : String -> Int
 toInt = String.toInt >> Result.toMaybe >> Maybe.withDefault 0
-
-{- note melody is reversed -}
-toPerformance : Result ParseError MelodyLine -> Result ParseError Performance
-toPerformance ml = 
-   let 
-     melody = log "melody" ml
-   in
-     Result.map (fromMelodyLine 0.0) melody
 
 {- continually parse the ABC after every key stroke -}
 checkAbc : String -> Cmd Msg
@@ -170,18 +153,19 @@ checkAbc abc =
 playAbc : Model -> (Model, Cmd Msg)
 playAbc m = 
   let 
-    notes = 
+    notesReversed = 
       m.abc
         |> terminateLine
         |> parse 
         |> melodyFromAbcResult 
         |> toPerformance
         |> makeMIDINotes
+    -- _ = log "notes reversed" notesReversed
     duration =
-      performanceDuration (List.reverse notes)
+      reversedPhraseDuration notesReversed
   in 
     ( { m | playing = True
-          , duration = duration }, requestPlayNoteSequence notes )     
+          , duration = duration }, requestPlayNoteSequence (List.reverse notesReversed) )     
 
 
 {- transpose the tune to a new key -}
@@ -582,29 +566,6 @@ sharpKey pc m = { pitchClass = pc, accidental = Just Sharp, mode = m }
 flatKey : PitchClass -> Mode -> KeySignature
 flatKey pc m = { pitchClass = pc, accidental = Just Flat, mode = m }
 
--- move this later
-
-{- make the next MIDI note -}
-makeMIDINote : (Float, Notable) -> MidiNote
-makeMIDINote ne = 
-  let 
-    (time, notable) = ne
-  in
-    case notable of
-       -- we've hit a Note
-       Note pitch velocity ->
-         MidiNote pitch time velocity
-
-{- make the MIDI notes - if we have a performance result from parsing the midi file, convert
-   the performance into a list of MidiNote
--}
-makeMIDINotes :  Result ParseError Performance -> MidiNotes
-makeMIDINotes perfResult = 
-  case perfResult of
-    Ok perf ->
-      List.map makeMIDINote perf
-    Err err ->
-      []
 
 
 

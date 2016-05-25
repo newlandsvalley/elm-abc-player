@@ -16,6 +16,7 @@ import Abc exposing (..)
 import AbcPerformance exposing (melodyFromAbcResult)
 import Melody exposing (..)
 import Notable exposing (..)
+import MidiNotes exposing (..)
 import Lessons exposing (..)
 import Json.Encode as Json
 import SoundFont.Ports exposing (..)
@@ -141,8 +142,6 @@ showButtons = succeed (ShowButtons)
 showButtonsAction : Cmd Msg
 showButtonsAction =
   Task.perform (\_ -> NoOp) (\_ -> NoOp) showButtons
-
-
      
 {- calculate the performance duration in seconds -}
 performanceDuration : MidiNotes -> Float
@@ -167,33 +166,23 @@ terminateLine s =
 toInt : String -> Int
 toInt = String.toInt >> Result.toMaybe >> Maybe.withDefault 0
 
-{- note melody is reversed -}
-toPerformance : Result ParseError MelodyLine -> Result ParseError Performance
-toPerformance ml = 
-   let 
-     melody = log "melody" ml
-   in
-     Result.map (fromMelodyLine 0.0) melody
-
-    
 {- play the ABC and return the duration in the amended model -}
 playAbc : Model -> (Model, Cmd Msg)
 playAbc m = 
   let 
-    notes = 
+    notesReversed = 
       m.abc
         |> terminateLine
         |> parse 
         |> melodyFromAbcResult 
         |> toPerformance
         |> makeMIDINotes
+    -- _ = log "notes reversed" notesReversed
     duration =
-      performanceDuration (List.reverse notes)
+      reversedPhraseDuration notesReversed
   in 
     ( { m | playing = True
-          , duration = duration }, requestPlayNoteSequence notes )    
-
-
+          , duration = duration }, requestPlayNoteSequence (List.reverse notesReversed) )   
 
 -- VIEW
 
@@ -439,30 +428,6 @@ highlights model =
          ]
        else
          []
-
--- move this later
-
-{- make the next MIDI note -}
-makeMIDINote : (Float, Notable) -> MidiNote
-makeMIDINote ne = 
-  let 
-    (time, notable) = ne
-  in
-    case notable of
-       -- we've hit a Note
-       Note pitch velocity ->
-         MidiNote pitch time velocity
-
-{- make the MIDI notes - if we have a performance result from parsing the midi file, convert
-   the performance into a list of MidiNote
--}
-makeMIDINotes :  Result ParseError Performance -> MidiNotes
-makeMIDINotes perfResult = 
-  case perfResult of
-    Ok perf ->
-      List.map makeMIDINote perf
-    Err err ->
-      []
 
 
 

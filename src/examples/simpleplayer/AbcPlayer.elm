@@ -16,6 +16,7 @@ import Music.Notation exposing (..)
 import AbcPerformance exposing (..)
 import Melody exposing (..)
 import Notable exposing (..)
+import MidiNotes exposing (..)
 
 main =
   Html.program
@@ -73,12 +74,6 @@ update msg model =
         , requestPlayNoteSequence notes 
         ) 
    
-mToList : Maybe (List a) -> List a
-mToList m = case m of
-   Nothing -> []
-   Just x -> x
-
-
 {- load an ABC file -}
 loadAbc : String -> Cmd Msg
 loadAbc url = 
@@ -95,52 +90,6 @@ loadAbc url =
           |> Task.map parseLoadedFile
           |> Task.perform (\_ -> NoOp) Abc
 
-{- inspect the next performance event and generate the appropriate sound command 
-   which is done by looking up the sound fonts.  
--}
-{-
-nextSound : AudioContext -> Dict Int SoundSample -> (Float, Notable) -> Sound
-nextSound ctx samples ne = 
-  let 
-    (time, notable) = ne
-  in
-    case notable of
-      -- we've hit a Note
-      Note pitch velocity ->
-        let 
-          sample = Dict.get pitch samples
-          soundBite = { mss = sample, time = time, gain = velocity }
-        in
-          maybePlay ctx soundBite
--}
-           
-
-{- make the sounds - if we have a performance result from parsing the midi file, convert
-   the performance into a list of soundbites (aka Sounds)
--}
-{-
-makeSounds :  Maybe AudioContext -> Dict Int SoundSample -> Result String Performance -> Sounds 
-makeSounds mctx ss perfResult = 
-     case perfResult of
-       Ok perf ->
-         case mctx of
-           Just ctx ->
-             List.map (nextSound ctx ss) perf
-           _ ->
-             []
-       Err err ->
-         []
--}
-
-{- play the sounds as a single uninterruptible task -}
-{-
-playSounds : Sounds -> Effects Action
-playSounds sounds = 
-      sequence sounds
-      |> Task.map (\x -> NoOp)
-      |> Effects.task
--}
-
 
 {- extract the true response, concentrating on 200 statuses - assume other statuses are in error
    (usually 404 not found)
@@ -155,9 +104,6 @@ extractResponse result = case result of
 {- cast a String to an Int -}
 toInt : String -> Int
 toInt = String.toInt >> Result.toMaybe >> Maybe.withDefault 0
-
-toPerformance : Result String MelodyLine -> Result String Performance
-toPerformance ml = Result.map (fromMelodyLine 0.0) ml
 
 parseLoadedFile : Result String Value -> Result String Performance
 parseLoadedFile r = 
@@ -191,29 +137,6 @@ view model =
     , button [ onClick Play ] [ text "play" ]
     ]
 
--- THE ACTUAL WORK
-  
-{- make the next MIDI note -}
-makeMIDINote : (Float, Notable) -> MidiNote
-makeMIDINote ne = 
-  let 
-    (time, notable) = ne
-  in
-    case notable of
-       -- we've hit a Note
-       Note pitch velocity ->
-         MidiNote pitch time velocity
-
-{- make the MIDI notes - if we have a performance result from parsing the midi file, convert
-   the performance into a list of MidiNote
--}
-makeMIDINotes :  Result String Performance -> MidiNotes
-makeMIDINotes perfResult = 
-  case perfResult of
-    Ok perf ->
-      List.map makeMIDINote perf
-    Err err ->
-      []
 
 
 

@@ -1,7 +1,8 @@
 module Notable exposing
   ( Notable (..)
   , Performance
-  , fromMelodyLine) 
+  , fromMelodyLine
+  , toPerformance) 
 
 import Melody exposing (..)
 import Maybe exposing (map, withDefault)
@@ -82,4 +83,13 @@ fromMelodyLine t m =
   in
     p
 
+{- Turn a melodyline result into a performance.
+    note melody is reversed
+ -}
+toPerformance : Result error MelodyLine -> Result error Performance
+toPerformance ml = 
+   let 
+     melody = log "melody" ml
+   in
+     Result.map (fromMelodyLine 0.0) melody
 
