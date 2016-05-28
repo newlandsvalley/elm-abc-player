@@ -1,0 +1,16 @@
+.hoverable {
+  border: none;
+  border-radius: 6px;
+  padding: 2px 10px;
+  margin: 10px 0px 10px 25px;
+  font-size: 1.2em;
+  background-color: #67d665;  /* lighter green */
+  color: white;
+  box-shadow: 3px 3px #669966;  /* darker green */
+  transition: 500ms;
+}
+
+.hoverable:hover {
+  box-shadow: 0 0;
+  background-color: #669966;   /* darker green */
+}

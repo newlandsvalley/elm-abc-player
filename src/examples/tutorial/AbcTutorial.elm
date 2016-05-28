@@ -4,7 +4,6 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, targetValue, onClick, onInput)
 import Html.App as Html
-{- import DynamicStyle exposing (hover) -}
 import Task exposing (Task, andThen, succeed, sequence, onError)
 import Process exposing (sleep)
 import List exposing (reverse)
@@ -228,15 +227,15 @@ view model =
       ,  div
          [ centreStyle ]       
            [  
-              button ( buttonAttributes model.playing (MoveToEnd False))
+              button ( buttonAttributes (not model.playing) (MoveToEnd False))
                        [ text "first" ]
-           ,  button ( buttonAttributes model.playing (Move False))
+           ,  button ( buttonAttributes (not model.playing) (Move False))
                        [ text "previous" ]
-           ,  button ( buttonAttributes model.playing Play)
+           ,  button ( buttonAttributes (not model.playing) Play)
                        [ text "play" ]
-           ,  button ( buttonAttributes model.playing (Move True))
+           ,  button ( buttonAttributes (not model.playing) (Move True))
                        [ text "next" ]
-           ,  button ( buttonAttributes model.playing (MoveToEnd True))
+           ,  button ( buttonAttributes (not model.playing) (MoveToEnd True))
                        [ text "last" ]
            ]
       ,  div 
@@ -327,62 +326,30 @@ centreStyle =
 
 {- gather together all the button attributes -}
 buttonAttributes : Bool -> Msg -> List (Attribute Msg)
-buttonAttributes isDisabled msg =
-  hoverButton isDisabled ++
-    [ bStyle isDisabled
+buttonAttributes isEnabled msg =
+    [ class "hoverable"
+    , bStyle isEnabled
     , onClick msg
-    , disabled isDisabled 
+    , disabled (not isEnabled)
     ] 
 
-{- style a button -}
-bStyle : Bool -> Attribute Msg
-bStyle disabled = 
+{- style a button 
+   Note: all button styling is deferred to the external css (which implements hover)
+         except for when the button is greyed out when it is disabled
+-}
+bStyle : Bool -> Attribute msg
+bStyle enabled = 
   let
-    basecss =
-      [
-        ("border", "none")
-      , ("padding", "5px 10px")
-      , ("-webkit-border-radius", "8px")
-      , ("-moz-border-radius", "8px")
-      , ("-webkit-box-shadow", "rgba(0,0,0,1) 0 1px 0")
-      , ("-moz-box-shadow", "rgba(0,0,0,1) 0 1px 0")
-      , ("box-shadow", "rgba(0,0,0,1) 0 1px 0")
-      , ("text-shadow", "rgba(0,0,0,.4) 0 1px 0")
-      , ("font-size", "14px")
-      , ("font-family", "Georgia, serif")
-      , ("text-decoration", "none")
-      , ("vertical-align", "middle") 
-      , ("margin", "5px 5px 5px 5px")
-      , ("font", "100% \"Trebuchet MS\", Verdana, sans-serif")
-      , ("-webkit-transition-duration", "0.2s")
-      , ("-moz-transition-duration", "0.2s")
-      , ("transition-duration", "0.2s")
-     ]
     colour =
-      if disabled then
-        [ ("background-color", "#7D7C7C")
-        , ("color", "grey")
-        ]
-      else
-        [ ("background-color", "#67d665")
-        , ("background", "-webkit-gradient(linear, left top, left bottom, from(#3e9c5f), to(#67d665))")
-        , ("background", "-webkit-linear-gradient(top, #3e9c5f, #67d665)")
-        , ("background", "-moz-linear-gradient(top, #3e9c5f, #67d665)")
-        , ("background", "-ms-linear-gradient(top, #3e9c5f, #67d665)")
-        , ("background", "-o-linear-gradient(top, #3e9c5f, #67d665)")
-        , ("color", "black")
+      if enabled then
+        [ 
         ]  
+      else
+        [ ("background-color", "lightgray")
+        , ("color", "darkgrey")
+        ]
   in
-    style (basecss ++ colour)
-
-{- hover over a button -}
-hoverButton : Bool -> List (Attribute msg)
-hoverButton enabled =      
-  if enabled then
-     {- hover [("background-color","#67d665","#669966")] -}
-    []
-  else
-    []
+    style (colour) 
 
 {- style a fieldset -}
 fieldsetStyle : Attribute Msg

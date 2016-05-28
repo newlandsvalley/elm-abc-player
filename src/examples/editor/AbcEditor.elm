@@ -4,7 +4,6 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, targetValue, onClick, onInput)
 import Html.App as Html
-{- import DynamicStyle exposing (hover) -}
 import Task exposing (Task, andThen, succeed, sequence, onError)
 import Process exposing (sleep)
 import List exposing (reverse, isEmpty)
@@ -311,7 +310,7 @@ transpositionMenu m =
     mKeySig =
       case
         m.tuneResult of
-          Ok tune -> getKeySig tune
+          Ok tune -> defaultToC (getKeySig tune)
           _ -> Nothing
   in
     case mKeySig of
@@ -435,20 +434,8 @@ leftPanelWidgetStyle =
     [      
       ("margin-left", "40px")
     , ("margin-top", "40px")
+    , ("font-size", "1.2em")
     ]
-
-{-
-leftPanelWidgetStyle : Attribute
-leftPanelWidgetStyle =
-  style
-    [  
-    {-    
-      ("margin-left", "40px")
-    , ("margin-top", "40px")
-    -}
-      ("float", "left")
-    ]
--}
 
 {- style a centered component -}    
 centreStyle : Attribute msg
@@ -464,7 +451,7 @@ leftPaneStyle =
   style
      [
         ("float", "left") 
-     ,  ("width", "300px")
+     ,  ("width", "350px")
      
      ]
 
@@ -478,63 +465,29 @@ rightPaneStyle =
 {- gather together all the button attributes -}
 buttonAttributes : Bool -> Msg -> List (Attribute Msg)
 buttonAttributes isEnabled msg =
-  hoverButton isEnabled ++
-    [ bStyle isEnabled
+    [ class "hoverable"
+    , bStyle isEnabled
     , onClick msg
     , disabled (not isEnabled)
     ] 
 
-{- style a button -}
+{- style a button 
+   Note: all button styling is deferred to the external css (which implements hover)
+         except for when the button is greyed out when it is disabled
+-}
 bStyle : Bool -> Attribute msg
 bStyle enabled = 
   let
-    basecss =
-      [
-        ("border", "none")
-      , ("padding", "2px 10px")
-      , ("-webkit-border-radius", "8px")
-      , ("-moz-border-radius", "8px")
-      , ("-webkit-box-shadow", "rgba(0,0,0,1) 0 1px 0")
-      , ("-moz-box-shadow", "rgba(0,0,0,1) 0 1px 0")
-      , ("box-shadow", "rgba(0,0,0,1) 0 1px 0")
-      , ("text-shadow", "rgba(0,0,0,.4) 0 1px 0")
-      , ("font-size", "14px")
-      , ("font-family", "Georgia, serif")
-      , ("text-decoration", "none")
-      , ("vertical-align", "middle") 
-      -- , ("margin", "5px 5px 5px 5px")
-      , ("margin", "10px 0px 10px 25px")
-      , ("font", "100% \"Trebuchet MS\", Verdana, sans-serif")
-      , ("-webkit-transition-duration", "0.2s")
-      , ("-moz-transition-duration", "0.2s")
-      , ("transition-duration", "0.2s")
-     ]
     colour =
       if enabled then
-        [ ("background-color", "#67d665")
-        , ("background", "-webkit-gradient(linear, left top, left bottom, from(#3e9c5f), to(#67d665))")
-        , ("background", "-webkit-linear-gradient(top, #3e9c5f, #67d665)")
-        , ("background", "-moz-linear-gradient(top, #3e9c5f, #67d665)")
-        , ("background", "-ms-linear-gradient(top, #3e9c5f, #67d665)")
-        , ("background", "-o-linear-gradient(top, #3e9c5f, #67d665)")
-        , ("color", "black")
+        [ 
         ]  
       else
-        [ ("background-color", "#7D7C7C")
-        , ("color", "grey")
+        [ ("background-color", "lightgray")
+        , ("color", "darkgrey")
         ]
   in
-    style (basecss ++ colour)
-
-{- hover over a button -}
-hoverButton : Bool -> List (Attribute msg)
-hoverButton enabled =      
-  if enabled then
-     {- hover [("background-color","#67d665","#669966")] -}
-    []
-  else
-    []
-  
+    style (colour) 
 
 {- style a fieldset -}
 fieldsetStyle : Attribute msg
@@ -565,6 +518,16 @@ sharpKey pc m = { pitchClass = pc, accidental = Just Sharp, mode = m }
 
 flatKey : PitchClass -> Mode -> KeySignature
 flatKey pc m = { pitchClass = pc, accidental = Just Flat, mode = m }
+
+cMajor : ModifiedKeySignature
+cMajor = ({ pitchClass = C, accidental = Nothing, mode = Major }, [])
+
+{- if there's no key signature in a properly parsed tune then default to C -}
+defaultToC : Maybe ModifiedKeySignature -> Maybe ModifiedKeySignature
+defaultToC mks =
+  case mks of
+    Just ks -> mks
+    _ -> Just cMajor
 
 
 
