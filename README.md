@@ -54,7 +54,7 @@ To do
 
 *   Add load and save buttons to the editor
 
-*   Allow the user to interrupt playback.  Probably by using facilities prototyped [here]((https://github.com/newlandsvalley/elm-soundfont-ports/tree/master/examples/src/controlledplayer).
+*   Allow the user to interrupt playback.  Probably by using facilities prototyped [here](https://github.com/newlandsvalley/elm-soundfont-ports/tree/master/examples/src/controlledplayer).
 
 
 
