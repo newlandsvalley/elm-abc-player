@@ -1,7 +1,7 @@
 elm-abc-player
 ==============
 
-This project explores the possibilities of playing [ABC notation](http://abcnotation.com/) directly in the browser within an Elm (0.17) application.  It uses two Elm libraries:
+This project explores the possibilities of playing [ABC notation](http://abcnotation.com/) directly in the browser within an Elm (0.17) application.  It uses two Elm audio libraries:
 
 *   Elm-abc-parser.  This is a parser for ABC notation. 
 
@@ -54,7 +54,7 @@ To do
 
 *   Add load and save buttons to the editor
 
-*   Allow the user to interrupt playback.  Probably by using facilities prototyped [here](https://github.com/newlandsvalley/elm-soundfont-ports/tree/master/examples/src/controlledplayer).
+*   Allow the user to interrupt playback.  Probably best achieved by building a version that produces the [MidiRecording](https://github.com/newlandsvalley/elm-comidi/blob/master/src/MidiTypes.elm) data type and integrating with the [midi-player](https://github.com/newlandsvalley/midi-player) module.
 
 
 

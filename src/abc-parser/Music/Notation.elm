@@ -1,9 +1,11 @@
 module Music.Notation exposing
   ( MidiPitch
+  , MidiTick
   , AbcTempo
   , NoteTime
   , DiatonicScale
   , notesInChromaticScale
+  , standardMidiTick
   , keySet
   , modifiedKeySet
   , getKeySet
@@ -14,7 +16,10 @@ module Music.Notation exposing
   , isCOrSharpKey
   , accidentalImplicitInKey
   , dotFactor
+  , noteTicks
+  , chordalNoteTicks
   , toMidiPitch
+  , midiTempo
   , noteDuration
   , chordalNoteDuration
   , transposeKeySignatureBy
@@ -25,10 +30,11 @@ module Music.Notation exposing
 # Definition
 
 # Data Types
-@docs MidiPitch, AbcTempo, NoteTime, DiatonicScale
+@docs MidiPitch, MidiTick, AbcTempo, NoteTime, DiatonicScale
 
 # Functions
 @docs notesInChromaticScale
+    , standardMidiTick
     , keySet
     , modifiedKeySet
     , getKeySet
@@ -39,7 +45,10 @@ module Music.Notation exposing
     , isCOrSharpKey
     , accidentalImplicitInKey
     , dotFactor
+    , noteTicks
+    , chordalNoteTicks
     , toMidiPitch
+    , midiTempo
     , noteDuration  
     , chordalNoteDuration
     , transposeKeySignatureBy
@@ -53,7 +62,7 @@ import Maybe.Extra exposing (join, isJust)
 import String exposing (contains, endsWith, fromChar)
 import Dict exposing (Dict, fromList, get)
 import Abc.ParseTree exposing (..)
-import Ratio exposing (Rational, over, fromInt, toFloat, add)
+import Ratio exposing (..)
 import Music.Accidentals exposing (..)
 
 
@@ -71,6 +80,9 @@ type alias Intervals = List Int
 {-| the pitch of a note expressed as a MIDI interval -}
 type alias MidiPitch = Int
 
+{-| a MIDI tick - used to give a note duration -}
+type alias MidiTick = Int
+
 {-| the time taken when a note is played before the next note -}
 type alias NoteTime = Float
 
@@ -83,6 +95,10 @@ type alias AbcTempo =
 
 
 -- EXPORTED FUNCTIONS
+{-| a standard MIDI tick - we'll use 1/4 note = 480 ticks -}
+standardMidiTick : MidiTick
+standardMidiTick = 480
+
 {-| there are 12 notes in a chromatic scale -}
 notesInChromaticScale : Int
 notesInChromaticScale = 12
@@ -210,6 +226,37 @@ dotFactor i =
     3 -> 0.875 
     _ -> 0
 
+{-| find a real world note duration by translating an ABC note duration using a tempo and unit note length  -}
+noteDuration : AbcTempo -> Rational -> NoteTime
+noteDuration t n = 
+   (60.0 * (Ratio.toFloat t.unitNoteLength) *  (Ratio.toFloat n) ) / 
+    ((Ratio.toFloat t.tempoNoteLength) * (Basics.toFloat t.bpm)) 
+
+{-| find a real world duration of a note in a chord by translating an ABC note duration together with a chord duration using a tempo and unit note length -}
+chordalNoteDuration : AbcTempo -> Rational -> Rational -> NoteTime
+chordalNoteDuration t note chord = 
+  (60.0 * (Ratio.toFloat t.unitNoteLength)* (Ratio.toFloat note) * (Ratio.toFloat chord)) / 
+    ((Ratio.toFloat t.tempoNoteLength) * (Basics.toFloat t.bpm))
+
+-- MIDI support
+{-| Calculate a MIDI note duration from the note length
+
+    Assume a standard unit note length of 1/4 and a standard number of ticks per unit (1/4) note of 480
+-}
+noteTicks : Rational -> MidiTick
+noteTicks n = 
+  (standardMidiTick * (numerator n) ) // (denominator n)  -- // is used for integer division in elm
+    
+{-| find a MIDI duration of a note within a chord in standard ticks (as above)
+    (1/4 note == 480 ticks)
+-}
+chordalNoteTicks : Rational -> Rational -> MidiTick
+chordalNoteTicks note chord = 
+  let
+    nTicks = noteTicks note
+  in
+    (nTicks * (numerator chord) ) // (denominator chord)  -- // is used for integer division in elm
+
 {-| convert an ABC note pitch to a MIDI pitch 
    AbcNote - the note in question
    ModifiedKeySignature - the key signature (possibly modified by extra accidentals) 
@@ -221,19 +268,25 @@ toMidiPitch : AbcNote -> ModifiedKeySignature -> Accidentals -> MidiPitch
 toMidiPitch n mks barAccidentals =
   (n.octave * notesInChromaticScale) + midiPitchOffset n mks barAccidentals
 
-{-| find a real world note duration by translating an ABC note duration using a tempo and unit note length  -}
-noteDuration : AbcTempo -> Rational -> NoteTime
-noteDuration t n = 
-   (60.0 * (Ratio.toFloat t.unitNoteLength) *  (Ratio.toFloat n) ) / 
-    ((Ratio.toFloat t.tempoNoteLength) * (Basics.toFloat t.bpm)) 
-    
+{-| the MIDI tempo is measured in microseconds per beat
 
+    algorithm is:
 
-{-| find a real world duration of a note in a chord by translating an ABC note duration together with a chord duration using a tempo and unit note length -}
-chordalNoteDuration : AbcTempo -> Rational -> Rational -> NoteTime
-chordalNoteDuration t note chord = 
-  (60.0 * (Ratio.toFloat t.unitNoteLength)* (Ratio.toFloat note) * (Ratio.toFloat chord)) / 
-    ((Ratio.toFloat t.tempoNoteLength) * (Basics.toFloat t.bpm))
+    t.bpm beats occupy 1 minute or 60 * 10^16 μsec
+    1 bpm beat occupies 60 * 10^16/t.bpm μsec
+
+    but we use a standard beat of 1 unit when writing a note, whereas the bpm measures a tempo note length of 
+    t.unitNoteLength/t.tempoNoteLength
+    i.e. 
+    1 whole note beat occupies 60 * 10^16/t.bpm * t.unl/t.tnl μsec
+
+-}
+midiTempo : AbcTempo -> Int
+midiTempo t =
+  let
+    relativeNoteLength = divide t.unitNoteLength t.tempoNoteLength 
+  in
+    round ((60.0 * 1000000 * Basics.toFloat (numerator relativeNoteLength)) / (Basics.toFloat t.bpm * Basics.toFloat (denominator relativeNoteLength)))
 
 {-| transpose a key signature by a given distance -}
 transposeKeySignatureBy : Int -> ModifiedKeySignature -> ModifiedKeySignature

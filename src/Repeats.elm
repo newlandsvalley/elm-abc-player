@@ -1,8 +1,6 @@
 module Repeats exposing
-  ( Section
-  , Repeats
-  , RepeatState
-  , indexBar 
+  ( 
+    indexBar 
   , defaultRepeatState
   , finalise
   , buildRepeatedMelody
@@ -21,9 +19,6 @@ module Repeats exposing
 
 # Definition
 
-# Data Types
-@docs Section, Repeats, RepeatState
-
 # Functions
 @docs indexBar 
     , defaultRepeatState
@@ -32,28 +27,12 @@ module Repeats exposing
 
 -}
 
-import Melody exposing (ABar, MelodyLine)
+-- import Melody exposing (ABar, MelodyLine)
 import Abc.ParseTree exposing (Repeat (..))
 import Maybe exposing (withDefault) 
 import Maybe.Extra exposing (isJust)
 import List.Extra exposing (takeWhile, dropWhile)
-
-
-type alias Section =
-  { start : Maybe Int
-  , firstEnding : Maybe Int
-  , secondEnding : Maybe Int
-  , end : Maybe Int
-  , isRepeated: Bool
-  }
-
-type alias Repeats = List Section
-
-type alias RepeatState =
-  {  current : Section
-  ,  repeats : Repeats
-  }
-
+import RepeatTypes exposing (..)
 
 {-| default repeats i.e. no repeats yet -}
 defaultRepeatState : RepeatState
@@ -62,7 +41,7 @@ defaultRepeatState =
 
 
 {-| index a bar by identifying any repeat markings and saving the marking against the bar number -}
-indexBar : ABar -> RepeatState -> RepeatState
+indexBar : GeneralisedBar n -> RepeatState -> RepeatState
 indexBar b r = 
   case (b.iteration, b.repeat) of
      -- |1  
@@ -84,7 +63,7 @@ indexBar b r =
        r
 
 {-| accumulate any residual current state from the final bar in the tune -}
-finalise : ABar -> RepeatState -> RepeatState
+finalise : GeneralisedBar n -> RepeatState -> RepeatState
 finalise lastBar r =
   let
     -- _ = log "last bar" lastBar 
@@ -103,7 +82,7 @@ finalise lastBar r =
     accumulateSection newr    
 
 {-| build any repeated section into an extended melody with all repeats realised -}
-buildRepeatedMelody : (MelodyLine, Repeats) -> MelodyLine
+buildRepeatedMelody : (List (GeneralisedBar n), Repeats) -> List (GeneralisedBar n)
 buildRepeatedMelody (ml, repeats) =
   if (List.isEmpty repeats) then
     ml
@@ -186,7 +165,7 @@ hasFirstEnding s =
   isJust s.firstEnding
 
 {- recognise a solitary bar indicating an end repeat and nothing more - used in finalise -}
-isEmptyRepeatEndBar : ABar -> Bool
+isEmptyRepeatEndBar : GeneralisedBar n -> Bool
 isEmptyRepeatEndBar b =
   List.length b.notes == 0 && b.repeat == Just End
 
@@ -199,7 +178,7 @@ accumulateSection r =
       r
 
 {-| take a slice of a melody line between start and finish -}
-slice : Int -> Int -> MelodyLine -> MelodyLine
+slice : Int -> Int -> List (GeneralisedBar n) -> List (GeneralisedBar n)
 slice start end =
   dropWhile (\bar -> bar.number < start)
     >> takeWhile (\bar -> bar.number < end)
@@ -207,7 +186,7 @@ slice start end =
 {-| take two variant slices of a melody line between start and finish 
     taking account of first repeat and second repeat sections
 -}
-variantSlice : Int -> Int -> Int -> Int -> MelodyLine -> MelodyLine
+variantSlice : Int -> Int -> Int -> Int -> List (GeneralisedBar n) -> List (GeneralisedBar n)
 variantSlice start firstRepeat secondRepeat end ml =
   let 
     section = slice start end ml
@@ -217,7 +196,7 @@ variantSlice start firstRepeat secondRepeat end ml =
     firstSection ++ secondSection
 
 {- build the complete melody with repeated sections in place -}
-repeatedSection : MelodyLine -> Section ->  MelodyLine -> MelodyLine
+repeatedSection : List (GeneralisedBar n) -> Section ->  List (GeneralisedBar n) -> List (GeneralisedBar n)
 repeatedSection ml s acc  =
   let 
     section { start, firstEnding, secondEnding, end, isRepeated } = (start, firstEnding, secondEnding, end, isRepeated)
