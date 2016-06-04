@@ -8,6 +8,7 @@
         "src/abc-parser",
         "src/examples",
         "src/examples/editor",
+        "src/examples/editor-controller",
         "src/examples/simpleplayer",
         "src/examples/tutorial"
     ],

@@ -49,12 +49,25 @@ to run, use:
 
     abctutorial.html
     
+#### ABC Editor with embedded MIDI player
+
+[Editor](https://github.com/newlandsvalley/elm-abc-player/tree/master/src/examples/editor-controller) is another version of the editor above.  However, this one translates the ABC into a [MidiRecording](https://github.com/newlandsvalley/elm-comidi/blob/master/src/MidiTypes.elm) and uses the [midi-player](https://github.com/newlandsvalley/midi-player) module to play the recording.
+
+to build:
+
+    ./compileec.sh
+
+to run, use:
+
+    abceditorcontroller.html
+    
+    
 To do
 -----
 
 *   Add load and save buttons to the editor
 
-*   Allow the user to interrupt playback.  Probably best achieved by building a version that produces the [MidiRecording](https://github.com/newlandsvalley/elm-comidi/blob/master/src/MidiTypes.elm) data type and integrating with the [midi-player](https://github.com/newlandsvalley/midi-player) module.
+*   Fix the remaining problems in the editor-controller with regard to the translation of ABC to MidiRecording.  In particular, fix tied notes, multiplets, chords and broken rhythm sections.
 
 
 
