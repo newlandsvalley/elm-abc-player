@@ -1,11 +1,13 @@
 elm-abc-player
 ==============
 
-This project explores the possibilities of playing [ABC notation](http://abcnotation.com/) directly in the browser within an Elm (0.17) application.  It uses two Elm audio libraries:
+These projects explore the possibilities of playing [ABC notation](http://abcnotation.com/) directly in the browser within an Elm (0.17) application.  They uses the following Elm audio libraries:
 
 *   Elm-abc-parser.  This is a parser for ABC notation. 
 
-*   SoundFont-ports.  This is the soundfont wrapper from [elm-soundfont-ports](https://github.com/newlandsvalley/elm-soundfont-ports).  It is more a psuedo-library because it relies on elm ports rather than a packaged library.
+*   Soundfont-ports.  This is the soundfont wrapper from [elm-soundfont-ports](https://github.com/newlandsvalley/elm-soundfont-ports).  It is more a psuedo-library because it relies on elm ports rather than a packaged library.
+
+*   Midi-player.  This is a player for MIDI recordings packaged as an autonomous module.  It, in turn, relies on soundfont-ports and is used in projects where the ABC is first converted to MIDI.
 
 The idea is to take ABC input and play it directly in the browser (i.e. without there being any need for server-side rendering or generation of intermediate MIDI files).
 
