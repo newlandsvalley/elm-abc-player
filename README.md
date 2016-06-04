@@ -51,7 +51,7 @@ to run, use:
     
 #### ABC Editor with embedded MIDI player
 
-[Editor](https://github.com/newlandsvalley/elm-abc-player/tree/master/src/examples/editor-controller) is another version of the editor above.  However, this one translates the ABC into a [MidiRecording](https://github.com/newlandsvalley/elm-comidi/blob/master/src/MidiTypes.elm) and uses the [midi-player](https://github.com/newlandsvalley/midi-player) module to play the recording.
+[Editor-controller](https://github.com/newlandsvalley/elm-abc-player/tree/master/src/examples/editor-controller) is another version of the editor above.  However, this one translates the ABC into a [MidiRecording](https://github.com/newlandsvalley/elm-comidi/blob/master/src/MidiTypes.elm) and uses the [midi-player](https://github.com/newlandsvalley/midi-player) module to play the recording.
 
 to build:
 
