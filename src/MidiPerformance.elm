@@ -42,12 +42,13 @@ import Maybe exposing (withDefault)
 import Debug exposing (..)
 
 type alias TranslationState = 
-   { modifiedKeySignature : ModifiedKeySignature
-   , tempo : AbcTempo
-   , tempoModifier : Rational
-   , nextBarNumber : Int
-   , thisBar : MidiBar
-   , repeatState : RepeatState
+   { modifiedKeySignature : ModifiedKeySignature   -- the current key signature
+   , tempo : AbcTempo                              -- the current tempo
+   , tempoModifier : Rational                      -- a transient tempo modifier (e.g. in tuples or broken rhythm)
+   , nextBarNumber : Int                           -- the number of the next bar to be added
+   , thisBar : MidiBar                             -- the current bar being translated
+   , lastNoteTied : Bool                           -- was the last note tied?
+   , repeatState : RepeatState                     -- the repeat state of the tune
    }
 
 -- default to 1/4=120
@@ -149,8 +150,14 @@ addNoteToState n state =
     line = state.thisBar.notes
     thisBar = state.thisBar
     accidentals = addMidiNoteToBarAccidentals n thisBar.accidentals
+    lastNoteTied = 
+      case n of
+        MNote n tied -> tied
+        _ -> False
   in
-    { state | thisBar = { thisBar | notes = n :: line, accidentals = accidentals } }
+    { state | thisBar = { thisBar | notes = n :: line, accidentals = accidentals }
+            , lastNoteTied = lastNoteTied
+    }
 
 {- add a midi tempo event to the state - add the tempo to the growing list of notes in the current bar
 -}
@@ -252,7 +259,13 @@ translateMusic m acc =
         let 
           ticks = (noteTicks abc.duration) 
           barAccidentals = state.thisBar.accidentals
-          note = MNote { ticks = ticks, pitch = toMidiPitch abc state.modifiedKeySignature barAccidentals, pc = Just abc.pitchClass, accidental = abc.accidental} abc.tied
+          -- if the last note was tied, we treat this note simply as a rest (zero pitch) in order to pace the tune properly
+          pitch = 
+            if (state.lastNoteTied) then
+              0
+            else
+              toMidiPitch abc state.modifiedKeySignature barAccidentals
+          note = MNote { ticks = ticks, pitch = pitch, pc = Just abc.pitchClass, accidental = abc.accidental} abc.tied
           newState = addNoteToState note state
         in
           (midiMelody, newState)
@@ -364,6 +377,7 @@ fromAbc tune =
                         , tempoModifier = 1 `over` 1
                         , nextBarNumber = 0
                         , thisBar = defaultBar 0
+                        , lastNoteTied = False
                         , repeatState = defaultRepeatState
                         })
     -- update this from the header state if we have any headers
@@ -411,11 +425,18 @@ midiNoteOff : MidiNote -> MidiMessage
 midiNoteOff n =
   (n.ticks, NoteOff 0 n.pitch 63)
 
+{- if the note has a pitch, issue a NoteOn/NoteOff pair otherwise
+   pace the rest by issuing an arbitrary text instruction with the
+   correct timing
+-}
 midiNote : Bool -> MidiNote -> List MidiMessage
 midiNote isTied n =
-  [  (0, NoteOn 0 n.pitch 63)
-  ,  (n.ticks, NoteOff 0 n.pitch 63)
-  ]
+  if (n.pitch > 0) then
+    [  (0, NoteOn 0 n.pitch 63)
+    ,  (n.ticks, NoteOff 0 n.pitch 63)
+    ]
+  else
+    [ (n.ticks, Text "rest") ]
 
 {- play a MIDI chord - all notes in the chord start at time 0 and then
    we pace the tune properly by just switching the first note off

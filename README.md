@@ -69,7 +69,6 @@ To do
 
 *   Add load and save buttons to the editor
 
-*   Fix the the translation of tied notes to MidiRecording.
 
 
 
