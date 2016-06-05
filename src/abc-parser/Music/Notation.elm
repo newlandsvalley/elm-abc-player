@@ -218,13 +218,14 @@ modifyKeySet target ks =
    and of one symmetrically reduced is
       1 - dotfactor x
 -}
-dotFactor : Int -> Float
+dotFactor : Int -> Rational
 dotFactor i =
   case i of 
-    1 -> 0.5 
-    2 -> 0.75 
-    3 -> 0.875 
-    _ -> 0
+    1 -> 1 `over` 2
+    2 -> 3 `over` 4
+    3 -> 7 `over` 8
+    _ -> 0 `over` 1
+
 
 {-| find a real world note duration by translating an ABC note duration using a tempo and unit note length  -}
 noteDuration : AbcTempo -> Rational -> NoteTime

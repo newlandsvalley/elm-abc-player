@@ -240,16 +240,16 @@ translateMusic m acc =
         case b of 
           LeftArrow i ->
             let
-              leftState =  { state | tempoModifier = ( 1 - dotFactor i) }
-              rightState =  { state | tempoModifier = ( 1 + dotFactor i) }
+              leftState =  { state | tempoModifier = ( 1 - Ratio.toFloat (dotFactor i)) }
+              rightState =  { state | tempoModifier = ( 1 + Ratio.toFloat (dotFactor i)) }
               notePair = translateNotePair n1 leftState n2 rightState
               newState = addNotesToState notePair state
             in              
               (melodyLine, newState)
           RightArrow i ->
             let
-              leftState =  { state | tempoModifier = ( 1 + dotFactor i) }
-              rightState =  { state | tempoModifier = ( 1 - dotFactor i) }
+              leftState =  { state | tempoModifier = ( 1 + Ratio.toFloat (dotFactor i)) }
+              rightState =  { state | tempoModifier = ( 1 - Ratio.toFloat (dotFactor i)) }
               notePair = translateNotePair n1 leftState n2 rightState
               newState = addNotesToState notePair state
             in              

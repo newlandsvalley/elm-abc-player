@@ -69,7 +69,7 @@ To do
 
 *   Add load and save buttons to the editor
 
-*   Fix the remaining problems in the editor-controller with regard to the translation of ABC to MidiRecording.  In particular, fix tied notes, multiplets, chords and broken rhythm sections.
+*   Fix the the translation of tied notes to MidiRecording.
 
 
 

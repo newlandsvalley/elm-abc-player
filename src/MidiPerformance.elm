@@ -36,7 +36,7 @@ import MidiTypes exposing (..)
 import RepeatTypes exposing (..)
 import Repeats exposing (..)
 import String exposing (fromChar, toUpper)
-import Ratio exposing (Rational, over, fromInt, toFloat, add)
+import Ratio exposing (Rational, over, fromInt, toFloat, add, numerator, denominator)
 import Maybe exposing (withDefault)
 
 import Debug exposing (..)
@@ -44,7 +44,7 @@ import Debug exposing (..)
 type alias TranslationState = 
    { modifiedKeySignature : ModifiedKeySignature
    , tempo : AbcTempo
-   , tempoModifier : Float
+   , tempoModifier : Rational
    , nextBarNumber : Int
    , thisBar : MidiBar
    , repeatState : RepeatState
@@ -111,9 +111,7 @@ updateState h acc =
        (melody, { state | modifiedKeySignature = mk} )
     _ -> acc       
 
-{- work out the midiTempo in microseconds/Beat by investigating the state 
-   NOT YET IMPLEMENTED - this is a stub
--}
+{- work out the midiTempo in microseconds/Beat by investigating the state -}
 midiTempo : TranslationState -> Int
 midiTempo state =
   Music.Notation.midiTempo state.tempo
@@ -208,7 +206,8 @@ translateNoteSequence isSeq state notes maybeChordDur =
       let 
         ticks = 
           if (isSeq) then
-            noteTicks abc.duration
+            (noteTicks abc.duration * numerator state.tempoModifier) 
+               // (denominator state.tempoModifier)
           else
             chordalNoteTicks abc.duration chordDuration
         barAccidentals = state.thisBar.accidentals
@@ -226,8 +225,12 @@ translateNoteSequence isSeq state notes maybeChordDur =
 translateNotePair : AbcNote -> TranslationState -> AbcNote -> TranslationState -> List MidiInstruction
 translateNotePair n1 s1 n2 s2  =
   let      
-    ticks1 = noteTicks n1.duration
-    ticks2 = noteTicks n2.duration
+    -- modify the tempo according to the state
+    ticks1 = (noteTicks n1.duration * numerator s1.tempoModifier) 
+               // (denominator s1.tempoModifier)
+    ticks2 = (noteTicks n2.duration * numerator s2.tempoModifier) 
+               // (denominator s2.tempoModifier)
+
     -- but we'll just accumulate use accidentals in the first state (which will be identical to the second)
     barAccidentals = s1.thisBar.accidentals
     note1 = MNote { ticks = ticks1, pitch = toMidiPitch n1 s1.modifiedKeySignature barAccidentals, pc = Just n1.pitchClass, accidental = n1.accidental} False
@@ -263,25 +266,29 @@ translateMusic m acc =
       Tuplet signature tnotes ->
         let 
           (p,q,r) = signature
-          tupletState = { state | tempoModifier = ( Basics.toFloat q / Basics.toFloat p) }
+          tupletState = { state | tempoModifier = q `over` p }
           tupletNotes = translateNoteSequence True tupletState tnotes Nothing
           newState = addNotesToState tupletNotes state
         in 
           (midiMelody, newState)
-      BrokenRhythmPair n1 b n2 ->     
+      BrokenRhythmPair n1 b n2 ->  
         case b of 
           LeftArrow i ->
             let
-              leftState =  { state | tempoModifier = ( 1 - dotFactor i) }
-              rightState =  { state | tempoModifier = ( 1 + dotFactor i) }
+              down = Ratio.add (1 `over` 1) (Ratio.negate (dotFactor i))
+              up = Ratio.add (1 `over` 1) (dotFactor i)
+              leftState =  { state | tempoModifier = down }
+              rightState =  { state | tempoModifier = up }
               notePair = translateNotePair n1 leftState n2 rightState
               newState = addNotesToState notePair state
             in              
               (midiMelody, newState)
           RightArrow i ->
             let
-              leftState =  { state | tempoModifier = ( 1 + dotFactor i) }
-              rightState =  { state | tempoModifier = ( 1 - dotFactor i) }
+              down = Ratio.add (1 `over` 1) (Ratio.negate (dotFactor i))
+              up = Ratio.add (1 `over` 1) (dotFactor i)
+              leftState =  { state | tempoModifier = up }
+              rightState =  { state | tempoModifier = down }
               notePair = translateNotePair n1 leftState n2 rightState
               newState = addNotesToState notePair state
             in              
@@ -354,7 +361,7 @@ fromAbc tune =
     -- set a default state for case where there are no tune headers
     defaultState = ([], { modifiedKeySignature = defaultKey
                         , tempo = defaultTempo
-                        , tempoModifier = 1.0
+                        , tempoModifier = 1 `over` 1
                         , nextBarNumber = 0
                         , thisBar = defaultBar 0
                         , repeatState = defaultRepeatState
@@ -394,16 +401,37 @@ melodyFromAbc expandRepeats tune =
     else
       mr
 
+{- just a NoteOn - for use in chords -}
+midiNoteOn : MidiNote -> MidiMessage
+midiNoteOn n =
+  (0, NoteOn 0 n.pitch 63)
+
+{- just a NoteOff - for use after the final note in chords -}
+midiNoteOff : MidiNote -> MidiMessage
+midiNoteOff n =
+  (n.ticks, NoteOff 0 n.pitch 63)
+
 midiNote : Bool -> MidiNote -> List MidiMessage
 midiNote isTied n =
   [  (0, NoteOn 0 n.pitch 63)
   ,  (n.ticks, NoteOff 0 n.pitch 63)
   ]
 
+{- play a MIDI chord - all notes in the chord start at time 0 and then
+   we pace the tune properly by just switching the first note off
+-}
 midiChord : List MidiNote -> List MidiMessage
 midiChord ns =
-  List.map (midiNote False) ns
-    |> List.concat
+  let 
+    firstNote = List.head ns
+    finalNoteOff =
+      case firstNote of
+        Just n -> [midiNoteOff n]
+        _ -> []
+  in
+    List.map (midiNoteOn) ns
+      ++ finalNoteOff
+    
 
 toMidiMessages : MidiInstruction -> List MidiMessage
 toMidiMessages mi =
