@@ -376,7 +376,7 @@ player model =
               ]
            ]
         Err _ ->
-         div [] [ text "no midi track present" ]
+         div [] [ ]
 
 {- the player buttons -}
 buttons : Model -> Html Msg

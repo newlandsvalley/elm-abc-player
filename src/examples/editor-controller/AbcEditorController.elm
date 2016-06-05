@@ -5,10 +5,9 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (on, targetValue, onClick, onInput)
 import Html.App as Html
 import Task exposing (Task, andThen, succeed, sequence, onError)
-import Process exposing (sleep)
-import List exposing (reverse, isEmpty)
+import List exposing (isEmpty)
 import Maybe exposing (Maybe, withDefault)
-import String exposing (toInt, slice)
+import String exposing (slice)
 import Result exposing (Result, formatError)
 import Abc exposing (..)
 import Abc.ParseTree exposing (AbcTune, PitchClass (..), Mode (..), Accidental (..), ModifiedKeySignature, KeySignature)
@@ -19,13 +18,12 @@ import Music.Octave exposing (up, down)
 import MidiMelody exposing (..)
 import MidiPerformance exposing (midiRecordingFromAbc)
 import MidiTypes exposing (MidiEvent(..), MidiRecording)
-import Midi.Track exposing (..)
 import Midi.Player exposing (Model, Msg, init, update, view, subscriptions)
 import Json.Decode as Json exposing (succeed)
 import Debug exposing (..)
 
 {-| Another ABC editor.  It continually parses the ABC as it is entered and flags up errors.
-    If the (checked) tune contains a key signature, then transposition options will be shown. 
+    Buttons are always active, and selecting them stops the playback if the tune is playing. 
 
     This one translates the ABC to MIDI and uses the Midi.Player module to play it
 
@@ -39,10 +37,8 @@ main =
 
 type alias Model =
     {
-      playing : Bool
-    , abc : String
+      abc : String
     , tuneResult : Result ParseError AbcTune
-    , duration : Float -- the tune duration in seconds
     , player : Midi.Player.Model
     }
 
@@ -65,10 +61,8 @@ init =
     (player, playerCmd) = Midi.Player.init recording
   in
     { 
-      playing = False
-    , abc = ""
+      abc = ""
     , tuneResult = Ok emptyTune
-    , duration = 0.0
     , player = player
     } ! [Cmd.map PlayerMsg playerCmd]
 
@@ -114,15 +108,7 @@ update msg model =
       in 
         { model | player = newPlayer } ! [Cmd.map PlayerMsg cmd]
 
-{- a different attempt at checking if buttons are enabled -}
-areButtonsEnabled : Model -> Bool
-areButtonsEnabled m =
-  case m.tuneResult of
-    Ok _ -> 
-      not (m.playing)
-    Err _ -> False
-
-   
+ 
 returnTuneResult : Result ParseError AbcTune -> Cmd Msg
 returnTuneResult r =
   Task.perform (\_ -> NoOp) TuneResult (Task.succeed r)
@@ -138,10 +124,6 @@ establishRecording r =
                  (\_ -> PlayerMsg (Midi.Player.SetRecording midiRecording)) 
                  (nullTask)
 
-
-{- cast a String to an Int -}
-toInt : String -> Int
-toInt = String.toInt >> Result.toMaybe >> Maybe.withDefault 0
 
 terminateLine : String -> String
 terminateLine s =
@@ -246,9 +228,9 @@ view model =
            [ span [ leftPanelWidgetStyle ] [text "Transpose to:"]
            , transpositionMenu model 
            , span [ leftPanelWidgetStyle ] [text "Move octave:"]     
-           , button ( buttonAttributes (areButtonsEnabled model) (MoveOctave True))
+           , button ( buttonAttributes True (MoveOctave True))
                        [ text "up" ]   
-           , button ( buttonAttributes (areButtonsEnabled model) (MoveOctave False))
+           , button ( buttonAttributes True (MoveOctave False))
                        [ text "down" ] 
            ]
       ,  div [ rightPaneStyle ]
@@ -303,13 +285,11 @@ transpositionMenu m =
     case mKeySig of
       Just mks ->
         select [ leftPanelWidgetStyle
-               , (disabled m.playing)
                , on "change" (Json.map Transpose targetValue)
                ] 
           (transpositionOptions mks)
       Nothing -> 
         select [ leftPanelWidgetStyle
-               , (disabled True) 
                ] 
           [
             option [] [text "not available" ]
@@ -449,7 +429,11 @@ rightPaneStyle =
         ("float", "left")
      ]
 
-{- gather together all the button attributes -}
+{- gather together all the button attributes 
+
+   In this version of the editor, buttons are enabled all the time.  They stop the tune
+   when they are selected if the tune happens to be playing
+-}
 buttonAttributes : Bool -> Msg -> List (Attribute Msg)
 buttonAttributes isEnabled msg =
     [ class "hoverable"
