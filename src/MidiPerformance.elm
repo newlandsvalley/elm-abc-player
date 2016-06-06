@@ -382,14 +382,15 @@ fromAbc tune =
                     )
 
     abcHeaders = fst tune    
-    {- update the translation state from the ABC headers (if present) or the default tempo (if not)
-       The latter case ensures a Tempo 'note' message will be placed at the start of the MIDI track
+    {- if there is no Tempo indication of any kind in the ABC headers, then add one.
+       This ensures a default Tempo 'note' message will be placed at the start of the MIDI track
     -}
     initialHeaders =
-      if List.isEmpty abcHeaders then
-        [ UnitNoteLength defaultTempo.unitNoteLength]
-      else
+      if hasTempoHeader abcHeaders then
         abcHeaders
+      else
+        UnitNoteLength defaultTempo.unitNoteLength :: abcHeaders
+
     -- update this from the header state if we have any headers
     headerState = List.foldl updateState defaultState initialHeaders
     f bp acc = case bp of
@@ -414,6 +415,19 @@ fromAbc tune =
         -- _ = log "repeats" (List.reverse repeatState.repeats)
      in
        (fullMusic, (List.reverse repeatState.repeats))
+
+{- does the tune contain any tempo-related ABC header? -}
+hasTempoHeader : TuneHeaders -> Bool
+hasTempoHeader hs =
+  let
+    f h =
+      case h of
+        UnitNoteLength _ -> True
+        Abc.ParseTree.Tempo _ -> True
+        _ -> False
+    tempoHeaders = List.filter f hs
+  in
+    (List.length tempoHeaders) > 0
 
 melodyFromAbc : Bool -> AbcTune -> (MidiMelody, Repeats)
 melodyFromAbc expandRepeats tune =
