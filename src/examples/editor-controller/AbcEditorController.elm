@@ -118,6 +118,7 @@ establishRecording r =
   let
     midiRecording = 
       toMidiRecording r
+    -- _ = log "midi recording" midiRecording
     nullTask = Task.succeed (\_ -> ())              
   in
     Task.perform (\_ -> NoOp) 

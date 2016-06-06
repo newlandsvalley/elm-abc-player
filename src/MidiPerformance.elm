@@ -96,7 +96,7 @@ updateState h acc =
       let
         newState = { state | tempo = { tempo | unitNoteLength = d }}
         mtempo = MTempo (midiTempo newState)
-        newState1 = addTempoToState mtempo newState
+        newState1 = addTempoToStateBar mtempo newState
       in
         (melody, newState1)
     Abc.ParseTree.Tempo t ->
@@ -104,7 +104,7 @@ updateState h acc =
         tnl = List.foldl Ratio.add (fromInt 0) t.noteLengths
         newState = { state | tempo = { tempo | tempoNoteLength = tnl, bpm = t.bpm }}
         mtempo = MTempo (midiTempo newState)
-        newState1 = addTempoToState mtempo newState
+        newState1 = addTempoToStateBar mtempo newState
       in
        (melody, newState1)
     -- ignore accidental note modifiers in key signatures for the moment - they're little used
@@ -159,10 +159,9 @@ addNoteToState n state =
             , lastNoteTied = lastNoteTied
     }
 
-{- add a midi tempo event to the state - add the tempo to the growing list of notes in the current bar
--}
-addTempoToState : MidiInstruction -> TranslationState -> TranslationState 
-addTempoToState t state =
+{- add a midi tempo event to growing list of 'notes' in the current bar contained in the state -}
+addTempoToStateBar : MidiInstruction -> TranslationState -> TranslationState 
+addTempoToStateBar t state =
   let 
     line = state.thisBar.notes
     thisBar = state.thisBar
@@ -379,9 +378,20 @@ fromAbc tune =
                         , thisBar = defaultBar 0
                         , lastNoteTied = False
                         , repeatState = defaultRepeatState
-                        })
+                        }
+                    )
+
+    abcHeaders = fst tune    
+    {- update the translation state from the ABC headers (if present) or the default tempo (if not)
+       The latter case ensures a Tempo 'note' message will be placed at the start of the MIDI track
+    -}
+    initialHeaders =
+      if List.isEmpty abcHeaders then
+        [ UnitNoteLength defaultTempo.unitNoteLength]
+      else
+        abcHeaders
     -- update this from the header state if we have any headers
-    headerState = List.foldl updateState defaultState (fst tune)
+    headerState = List.foldl updateState defaultState initialHeaders
     f bp acc = case bp of
       -- process a line from the melody using the current state
       Score musicLine -> 
