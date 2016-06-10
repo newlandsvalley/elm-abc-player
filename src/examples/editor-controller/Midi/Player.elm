@@ -46,6 +46,8 @@ type alias PlaybackState =
    , playing : Bool                 -- are we currently playing?
    , noteOnSequence : Bool          -- are we in the midst of a NoteOn sequence
    , noteOnChannel : Int            -- if so, what's its channel
+   , notes : MidiNotes              -- accumulated notes to play until we see the next NoteOff message
+   , delay : Float                  -- the next delay between notes
    }
 
 {-| the model of the player -}
@@ -59,7 +61,7 @@ type alias Model =
 {-the slowdown in the player brought about by using elm's Tasks -}
 elmPlayerOverhead : Float
 elmPlayerOverhead = 0.872
--- elmPlayerOverhead = 0.923
+-- elmPlayerOverhead = 1.0
     
 -- let's use this to mark the end of a track or a track in error we can't play
 endOfTrack : MidiTypes.MidiEvent
@@ -76,6 +78,8 @@ init track =
                     , playing = False 
                     , noteOnSequence = False
                     , noteOnChannel = -1
+                    , notes = []
+                    , delay = 0.0
                     }
   } ! [requestLoadFonts "assets/soundfonts"]
 
@@ -86,9 +90,9 @@ type Msg
     = NoOp   
     | FontsLoaded Bool                           -- response that soundfonts have been loaded
     | SetRecording (Result String MidiRecording) -- an external command to set the recording that is to be played
-    | Step                                       -- step to the next event in the MIDI recording
-    | Play MidiNote                              -- request to play a single note
+    | Step                                       -- step to the next event in the MIDI recording and play it if possible
     | PlayedNote Bool                            -- response that the note has been played
+    | PlaySequenceStarted Bool                   -- response that a sequence of notes (a chord) has started to be played
     -- controller actions
     | Start                                      -- start / restart
     | Pause                                      -- pause
@@ -148,18 +152,21 @@ update msg model =
         let 
           _ = log "step state" model.playbackState
           soundEvent = nextEvent model.playbackState model.track 
-          (newState, maybeNote) = stepState soundEvent model.playbackState
+          (newState, midiNotes) = stepState soundEvent model.playbackState
           -- next action is either suspendAndPlay or step
-          nextAction = interpretSoundEvent soundEvent maybeNote newState
+          nextAction = interpretSoundEvent soundEvent midiNotes newState
           newModel = { model | playbackState = newState }
         in
           (newModel, nextAction) 
 
-    Play note ->   
-      (model, play note)
-
+    -- these two messages are responses from SoundFont subscriptions and we must delay for the NoteOff time
+    -- before stepping to the next MIDI message
     PlayedNote played ->
-      (model, step 0.0 )
+      (model, step model.playbackState.delay )
+
+    PlaySequenceStarted played ->
+      (model, step model.playbackState.delay )
+
 
 {- extract track zero from the midi recording -}
 toTrack0 : Result String MidiRecording -> Result String MidiTrack
@@ -176,9 +183,13 @@ playedNoteSub : Sub Msg
 playedNoteSub   =
   playedNote PlayedNote
 
+playSequenceStartedSub : Sub Msg
+playSequenceStartedSub  =
+  playSequenceStarted PlaySequenceStarted
+
 subscriptions : Model -> Sub Msg
 subscriptions m =
-  Sub.batch [fontsLoadedSub, playedNoteSub]
+  Sub.batch [fontsLoadedSub, playedNoteSub, playSequenceStartedSub]
       
 -- EFFECTS
 
@@ -208,27 +219,25 @@ nextEvent state trackResult =
 
           
 
-{- interpret the sound event - delay for the specified time and play the note if it's a NoteOn event
-   otherwise just step to the next MIDI event
+{- interpret the sound event - play the note if it's a single NoteOn event,
+   play a chord if there's more than one note otherwise just step to the next MIDI event
  -}
-interpretSoundEvent : SoundEvent -> Maybe MidiNote -> PlaybackState -> Cmd Msg
-interpretSoundEvent soundEvent maybeNote state = 
+interpretSoundEvent : SoundEvent -> MidiNotes -> PlaybackState -> Cmd Msg
+interpretSoundEvent soundEvent notes state = 
     if (state.playing) then
-      case maybeNote of
-        Just note ->
-           suspendAndPlay (soundEvent.deltaTime * elmPlayerOverhead) note
-        _ ->
-           step (soundEvent.deltaTime * elmPlayerOverhead)
+      case (List.length notes) of
+        0 ->
+          step (soundEvent.deltaTime * elmPlayerOverhead)
+        1 ->
+          case (List.head notes) of 
+            Just note ->
+              play note
+            _ ->  -- can't happen
+               step (soundEvent.deltaTime * elmPlayerOverhead)
+        _ -> 
+           playChord notes
     else
       Cmd.none
-
-{- a note is played by sleeping for its time offset and then requesting
-   that the note be played (through the port)
--}
-suspendAndPlay : Float -> MidiNote -> Cmd Msg
-suspendAndPlay delay note =
-  Process.sleep ( delay )
-    |> Task.perform (\_ -> NoOp) (\_ -> Play note)
 
 {- a non-note is processed by sleeping for the time delay and then
    stepping to the next MIDI event
@@ -237,7 +246,7 @@ step : Float -> Cmd Msg
 step delay =
   let
     task = 
-       Process.sleep ( delay )
+       Process.sleep ( delay * elmPlayerOverhead )
          `andThen` (\_ -> Task.succeed (\_ -> Step))
   in
     Task.perform (\_ -> NoOp) (\_ -> Step) task
@@ -250,6 +259,16 @@ play note =
   in
     requestPlayNote note1
 
+{- play a chord -}
+playChord : MidiNotes -> Cmd Msg
+playChord chord =
+  let 
+    f n = { n | timeOffset = 0.0 }
+    notes = List.map f chord
+  in
+    requestPlayNoteSequence notes
+
+
 {- issue a stop asynchronously to what the player thinks it's doing - this is issued
    externally whenever the player gets a new MIDI recording to play and must interrupt
    what it's doing.
@@ -258,11 +277,11 @@ stop : Cmd Msg
 stop = 
   Task.perform (\_ -> NoOp) (\_ -> MoveTo 0) (Task.succeed NoOp)
 
-{- step through the state, and return the note if it's a NoteOn message
-   if it's a RunningStatus message, then step to a note as if the previous 
-   message was NoteOn 
+{- step through the state, accumulating notes in the state if any NoteOn message is encountered.
+   If we see a NoteOff then return the note sequence (if any) so that it can be played
+   outside of chords, the note sequence will usually either be empty of contain a single note
 -}
-stepState : SoundEvent -> PlaybackState -> (PlaybackState, Maybe MidiNote)
+stepState : SoundEvent -> PlaybackState -> (PlaybackState, MidiNotes)
 stepState soundEvent state = 
   if state.playing then
     let 
@@ -271,12 +290,12 @@ stepState soundEvent state =
       case soundEvent.event of
         MidiTypes.Text t ->
           if (t == "EndOfTrack") then      
-            ({ state | playing = False, noteOnSequence = False }, Nothing)
+            ({ state | playing = False, noteOnSequence = False }, [])
           else 
-            ({ state | index = state.index + 1, noteOnSequence = False}, Nothing)
+            ({ state | index = state.index + 1, noteOnSequence = False}, [])
 
         Tempo t -> 
-          ( { state | microsecondsPerBeat = Basics.toFloat t, index = state.index + 1, noteOnSequence = False}, Nothing)
+          ( { state | microsecondsPerBeat = Basics.toFloat t, index = state.index + 1, noteOnSequence = False}, [])
      
         {- Running Status inherits the channel from the last event but only (in our case)
            if the state shows we're in the midst of a NoteOn sequence (i.e. a NoteOn followed 
@@ -290,26 +309,39 @@ stepState soundEvent state =
               stepState newEvent state
           else
             -- ignore anything else and reset the sequence state
-            ({ state | index = state.index + 1, noteOnSequence = False} , Nothing)
+            ({ state | index = state.index + 1, noteOnSequence = False} , [])
       
         NoteOn channel pitch velocity ->
           let
             midiNote = (MidiNote pitch soundEvent.deltaTime gain)
+            midiNotes = midiNote :: state.notes
             newstate = 
              { state | index = state.index + 1
                      , noteOnSequence = True
                      , noteOnChannel = channel
+                     , notes = midiNotes
              }
             maxVelocity = 0x7F
             gain =
               Basics.toFloat velocity / maxVelocity
           in
-            (newstate, Just midiNote)
+            (newstate, [])
               
-        _  -> 
-          ({ state | index = state.index + 1, noteOnSequence = False} , Nothing)
+        {- NoteOff messages will be used actually to request that the buffered note(s) will be played -}
+        NoteOff _ _ _ -> 
+          let 
+            midiNotes = state.notes
+          in
+            -- save the note delay in the state.  This will be used when control passes back to the player after the request to
+            -- play the note has been issued (which happens immediately) and then the next action is to delay before the next step
+            ({ state | index = state.index + 1
+                     , noteOnSequence = False
+                     , notes = []
+                     , delay = soundEvent.deltaTime } , midiNotes)
+        _ ->
+          ({ state | index = state.index + 1, noteOnSequence = False} , [])
      else
-       (state, Nothing)
+       (state, [])
 
 -- VIEW
 
