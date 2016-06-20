@@ -77,7 +77,7 @@ type Msg
     | MoveOctave Bool                          -- move the octave (up or down)
     | TuneResult (Result ParseError AbcTune)   -- parsed ABC
     | RequestFileUpload                        -- request an ABC upload
-    | FileLoaded String                        -- returned loaded ABC
+    | FileLoaded String                        -- returned loaded ABC - should use Maybe String but I get a port error when I try it!
     | PlayerMsg Midi.Player.Msg                -- delegated messages for the player
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -108,11 +108,15 @@ update msg model =
     RequestFileUpload -> 
       (model, requestLoadFile () )
 
+    -- should use maybes but it doesn't get through the port
     FileLoaded s ->
       let
          _ = log "elm file input" s
       in
-        ( { model | abc = s }, checkAbc s )
+        if (String.length s > 0) then
+          ( { model | abc = s }, checkAbc s )
+        else
+          (model, Cmd.none )
 
     PlayerMsg playerMsg -> 
       let 
@@ -254,7 +258,8 @@ view model =
                    , id "fileinput"   -- FileIO port requires this exact id to be set 
                    , accept ".abc" 
                    -- , property "media_type" (Json.string "text/vnd.abc")
-                   , on "change" (Json.succeed RequestFileUpload)
+                   -- , on "change" (Json.succeed RequestFileUpload)
+                   onClick (\_ -> RequestFileUpload)
                    , inputStyle
                    ] []
            , span [ leftPanelLabelStyle ] [text "Transpose to:"]

@@ -2,6 +2,7 @@ myapp.ports.requestLoadFile.subscribe(loadFile);
 
 function loadFile() {
     var selectedFile = document.getElementById('fileinput').files[0];
+    console.log("selected file: " + selectedFile);
     var reader = new FileReader();
     reader.onload = function(event) {
       var contents = event.target.result;
@@ -14,8 +15,11 @@ function loadFile() {
       myapp.ports.fileLoaded.send("");
     };
 
-    console.log("selected file: " + selectedFile);
-    reader.readAsText(selectedFile);
+    if (selectedFile == undefined) {
+       myapp.ports.fileLoaded.send("");
+    } else {
+       reader.readAsText(selectedFile);
+    }
 }
 
 

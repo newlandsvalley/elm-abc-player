@@ -1,7 +1,7 @@
 elm-abc-player
 ==============
 
-These projects explore the possibilities of playing [ABC notation](http://abcnotation.com/) directly in the browser within an Elm (0.17) application.  They uses the following Elm audio libraries:
+These projects explore the possibilities of playing [ABC notation](http://abcnotation.com/) directly in the browser within an Elm (0.17) application.  They use the following Elm audio libraries:
 
 *   Elm-abc-parser.  This is a parser for ABC notation. 
 
@@ -67,7 +67,7 @@ to run, use:
 To do
 -----
 
-*   Add load and save buttons to the editor
+*   Add save button to the editor
 
 
 
