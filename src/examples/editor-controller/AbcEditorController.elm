@@ -19,6 +19,7 @@ import MidiMelody exposing (..)
 import MidiPerformance exposing (midiRecordingFromAbc)
 import MidiTypes exposing (MidiEvent(..), MidiRecording)
 import Midi.Player exposing (Model, Msg, init, update, view, subscriptions)
+import FileIO.Ports exposing (..)
 import Json.Decode as Json exposing (succeed)
 import Debug exposing (..)
 
@@ -71,10 +72,12 @@ init =
 
 type Msg
     = NoOp   
-    | Abc String
-    | Transpose String
-    | MoveOctave Bool
-    | TuneResult (Result ParseError AbcTune)
+    | Abc String                               -- get the ABC text from the text area
+    | Transpose String                         -- transpose the ABC
+    | MoveOctave Bool                          -- move the octave (up or down)
+    | TuneResult (Result ParseError AbcTune)   -- parsed ABC
+    | RequestFileUpload                        -- request an ABC upload
+    | FileLoaded String                        -- returned loaded ABC
     | PlayerMsg Midi.Player.Msg                -- delegated messages for the player
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -101,6 +104,15 @@ update msg model =
         (newmodel, establishRecording newmodel.tuneResult)
 
     TuneResult tr ->  ( { model | tuneResult = tr }, establishRecording tr) 
+
+    RequestFileUpload -> 
+      (model, requestLoadFile () )
+
+    FileLoaded s ->
+      let
+         _ = log "elm file input" s
+      in
+        ( { model | abc = s }, checkAbc s )
 
     PlayerMsg playerMsg -> 
       let 
@@ -183,10 +195,19 @@ moveOctave movefn model =
      _ -> model
 
 -- SUBSCRIPTIONS
+-- subscription from the FileIO port
+fileLoadedSub : Sub Msg
+fileLoadedSub  =
+  fileLoaded FileLoaded
+
+
+-- overall subscriptions
 subscriptions : Model -> Sub Msg
 subscriptions model = 
   Sub.batch 
-    [ Sub.map PlayerMsg (Midi.Player.subscriptions model.player)
+    [ -- subscription from the MIDI player 
+      Sub.map PlayerMsg (Midi.Player.subscriptions model.player)
+    , fileLoadedSub
     ]      
 
 -- VIEW
@@ -195,6 +216,7 @@ viewError : Model -> Html Msg
 viewError m =
   let 
     tuneResult = m.tuneResult
+    textRange = 10  -- the range of characters to display around each side of the error position
   in
     case tuneResult of
       Err e -> 
@@ -204,10 +226,10 @@ viewError m =
         else
           let
             -- display a prefix of 5 characters before the error (if they're there) and a suffix of 5 after
-            startPhrase = Basics.max (e.position - 5) 0
+            startPhrase = Basics.max (e.position - textRange) 0
             errorPrefix = "error: " ++ slice startPhrase e.position m.abc
             startSuffix = Basics.min (e.position + 1) (String.length m.abc)
-            endSuffix = Basics.min (e.position + 6) (String.length m.abc)
+            endSuffix = Basics.min (e.position + textRange + 1) (String.length m.abc)
             errorSuffix = slice startSuffix endSuffix m.abc
             errorChar = slice e.position (e.position + 1) m.abc
           in
@@ -226,9 +248,18 @@ view model =
       [  
          h1 [ centreStyle ] [ text "ABC Editor" ]   
       ,  div [ leftPaneStyle ]
-           [ span [ leftPanelWidgetStyle ] [text "Transpose to:"]
+           [ 
+             span [ leftPanelLabelStyle  ]  [text "Load an ABC file:"]   
+           , input [ type' "file"
+                   , id "fileinput"   -- FileIO port requires this exact id to be set 
+                   , accept ".abc" 
+                   -- , property "media_type" (Json.string "text/vnd.abc")
+                   , on "change" (Json.succeed RequestFileUpload)
+                   , inputStyle
+                   ] []
+           , span [ leftPanelLabelStyle ] [text "Transpose to:"]
            , transpositionMenu model 
-           , span [ leftPanelWidgetStyle ] [text "Move octave:"]     
+           , span [ leftPanelLabelStyle ] [text "Move octave:"]     
            , button ( buttonAttributes True (MoveOctave True))
                        [ text "up" ]   
            , button ( buttonAttributes True (MoveOctave False))
@@ -285,15 +316,15 @@ transpositionMenu m =
   in
     case mKeySig of
       Just mks ->
-        select [ leftPanelWidgetStyle
+        select [ leftPanelLabelStyle
                , on "change" (Json.map Transpose targetValue)
                ] 
           (transpositionOptions mks)
       Nothing -> 
-        select [ leftPanelWidgetStyle
+        select [ leftPanelLabelStyle
                ] 
           [
-            option [] [text "not available" ]
+            option [] [text "unavailable" ]
           ]
 
 {- offer a menu of transposition options, appropriate to the 
@@ -381,28 +412,23 @@ taStyle =
     ]
 
 
-{- style the instructions section -}
-instructionStyle : Attribute msg
-instructionStyle =
-  style
-    [
-      ("padding", "10px 0")
-    , ("border", "none")
-    , ("text-align", "left")
-    , ("align", "center")
-    , ("display", "block")
-    , ("margin-left", "auto")
-    , ("margin-right", "auto")
-    , ("font", "100% \"Trebuchet MS\", Verdana, sans-serif")
-    ]
-
-leftPanelWidgetStyle : Attribute msg
-leftPanelWidgetStyle =
+leftPanelLabelStyle : Attribute msg
+leftPanelLabelStyle =
   style
     [      
       ("margin-left", "40px")
     , ("margin-top", "40px")
     , ("font-size", "1.2em")
+    ]
+
+{- style an input -}
+inputStyle : Attribute Msg
+inputStyle =
+  style
+    [
+      ("padding", "10px 0")
+    , ("font-size", "1em")
+    , ("margin-left", "40px")
     ]
 
 {- style a centered component -}    
