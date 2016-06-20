@@ -7,6 +7,6 @@ port requestLoadFile : () -> Cmd msg
 -- incoming ports (for subscriptions from javascript)
 
 {-| Has the file been loaded OK? -}
-port fileLoaded : (String -> msg) -> Sub msg
+port fileLoaded : (Maybe String -> msg) -> Sub msg
 
 

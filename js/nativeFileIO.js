@@ -12,11 +12,11 @@ function loadFile() {
 
     reader.onerror = function(event) {
       console.error("File could not be read! Code " + event.target.error.code);
-      myapp.ports.fileLoaded.send("");
+      myapp.ports.fileLoaded.send(null);
     };
 
     if (selectedFile == undefined) {
-       myapp.ports.fileLoaded.send("");
+       myapp.ports.fileLoaded.send(null);
     } else {
        reader.readAsText(selectedFile);
     }

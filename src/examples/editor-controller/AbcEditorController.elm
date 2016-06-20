@@ -77,7 +77,7 @@ type Msg
     | MoveOctave Bool                          -- move the octave (up or down)
     | TuneResult (Result ParseError AbcTune)   -- parsed ABC
     | RequestFileUpload                        -- request an ABC upload
-    | FileLoaded String                        -- returned loaded ABC - should use Maybe String but I get a port error when I try it!
+    | FileLoaded (Maybe String)                -- returned loaded ABC
     | PlayerMsg Midi.Player.Msg                -- delegated messages for the player
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -106,17 +106,17 @@ update msg model =
     TuneResult tr ->  ( { model | tuneResult = tr }, establishRecording tr) 
 
     RequestFileUpload -> 
-      (model, requestLoadFile () )
+       (model, requestLoadFile () )
 
-    -- should use maybes but it doesn't get through the port
-    FileLoaded s ->
+    FileLoaded maybes ->
       let
-         _ = log "elm file input" s
+         _ = log "elm file input" maybes
       in
-        if (String.length s > 0) then
-          ( { model | abc = s }, checkAbc s )
-        else
-          (model, Cmd.none )
+       case maybes of
+         Just s ->
+           ( { model | abc = s }, checkAbc s )
+         Nothing ->
+           (model, Cmd.none )
 
     PlayerMsg playerMsg -> 
       let 
@@ -160,6 +160,8 @@ checkAbc abc =
     pr = parse terminatedAbc
   in 
     returnTuneResult (pr)
+
+{- handle the upload request -}
     
 {- transpose the tune to a new key -}
 transpose : String -> Model -> Model
@@ -259,7 +261,7 @@ view model =
                    , accept ".abc" 
                    -- , property "media_type" (Json.string "text/vnd.abc")
                    -- , on "change" (Json.succeed RequestFileUpload)
-                   onClick (\_ -> RequestFileUpload)
+                   , onClick RequestFileUpload
                    , inputStyle
                    ] []
            , span [ leftPanelLabelStyle ] [text "Transpose to:"]
