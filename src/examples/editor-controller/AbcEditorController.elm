@@ -259,9 +259,8 @@ view model =
            , input [ type' "file"
                    , id "fileinput"   -- FileIO port requires this exact id to be set 
                    , accept ".abc" 
-                   -- , property "media_type" (Json.string "text/vnd.abc")
-                   -- , on "change" (Json.succeed RequestFileUpload)
-                   , onClick RequestFileUpload
+                   --, onClick RequestFileUpload
+                   , on "change" (Json.succeed RequestFileUpload)
                    , inputStyle
                    ] []
            , span [ leftPanelLabelStyle ] [text "Transpose to:"]
