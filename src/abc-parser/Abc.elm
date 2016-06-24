@@ -88,8 +88,13 @@ scoreItem = rec <| \() ->
    any shape, using a sequence of | (thin bar line), [| or |] (thick bar line), and : (dots), e.g. |[| or [|::: 
 -}
 barline : Parser Music
+barline = buildBarline <$> barSeparator <*> maybe repeatSection
+            <?> "barline"
+
+{-
 barline = buildBarline <$> barSeparator <*> maybe Combine.Num.digit
              <?> "barline"
+-}
 
 {- written like this instead of a regex because it's all regex control character! -}
 barSeparator : Parser String
@@ -103,7 +108,24 @@ barSeparator =
         , string "|"
         , string ":"
         ]
-    )       
+    )     
+  
+{- a repeat section at the start of a bar.  We have just parsed a bar marker (say |) and so the combination of this and the repeat may be:
+      |1
+      |[1
+      | [1
+   but is not allowed to be
+      | 1
+
+   associating the digit with the bracket bar number should remove ambiguity with respect to other productions that use the bracket
+   (in particular, inline headers and chords).
+-}
+repeatSection : Parser Int
+repeatSection =
+  choice
+    [ Combine.Num.digit
+    , whiteSpace *> char '[' *> Combine.Num.digit
+    ]
 
 slur : Parser Music
 slur = Slur <$> choice [char '(', char ')']
@@ -125,9 +147,9 @@ slur = rec <| \() ->
              <?> "slur"
 -}
 
-
+-- spec is unclear if spaces are allowed after a broken rhythm operator but it's easy to support, is more permissive and doesn't break anything
 brokenRhythmTie : Parser Broken
-brokenRhythmTie  = buildBrokenOperator <$> regex "(<+|>+)"
+brokenRhythmTie  = buildBrokenOperator <$> regex "(<+|>+)" <* whiteSpace
 
 brokenRhythmPair : Parser Music
 brokenRhythmPair = BrokenRhythmPair <$> abcNote <*> brokenRhythmTie <*> abcNote
@@ -266,7 +288,7 @@ noteDuration = rational <* whiteSpace
    120  (which means 1/4=120)
 -}
 tempoSignature : Parser TempoSignature
-tempoSignature = buildTempoSignature <$> maybe spacedQuotedString <*> many headerRational <*> maybe (char '=') <*> int <*> maybe spacedQuotedString
+tempoSignature = buildTempoSignature <$> maybe spacedQuotedString <*> many headerRational <*> maybe (char '=') <*> int <*> maybe spacedQuotedString <* whiteSpace
 
 -- accidental in a key signature (these use a different representation from accidentals in the tune body)
 sharpOrFlat : Parser Accidental
@@ -741,7 +763,7 @@ maybeTie = (maybe (char '-'))
 
 integralAsRational : Parser Rational
 integralAsRational =
-   Ratio.fromInt <$> Combine.Num.digit
+   Ratio.fromInt <$> int
 
 tuplet : Parser Music
 tuplet = Tuplet <$> (char '(' *> tupletSignature) <*> many1 abcNote
@@ -753,10 +775,12 @@ tuplet = Tuplet <$> (char '(' *> tupletSignature) <*> many1 abcNote
    (3::           --> {3,2,3}
    (3:2:4         --> {3,2,4}
    (3::2          --> {3,2,2}
+
+   note, space is allowed after the tuplet signature but before the notes in the tuplet
 -}
 tupletSignature : Parser TupletSignature
 tupletSignature = buildTupletSignature <$> 
-   regex "[2-9]" <*> tup <*> tup
+   regex "[2-9]" <*> tup <*> tup <* whiteSpace
 
 tup : Parser (Maybe String)
 tup = join <$> maybe 
@@ -773,12 +797,6 @@ invert r =
     divide unit r
     
 
--- build a rationalal quantity - "x/y" -> Rational x y
-{-
-buildRational : Int -> Char -> Int -> MeterSignature
-buildRational x slash y = x `over` y
--}
-
 {- used in counting slashes exponentially -}
 buildRationalFromExponential : Int -> Rational
 buildRationalFromExponential i =
@@ -787,12 +805,18 @@ buildRationalFromExponential i =
 -- build a tempo signature
 buildTempoSignature : Maybe String -> List Rational -> Maybe Char -> Int -> Maybe String -> TempoSignature
 buildTempoSignature ms1 fs c i ms2 =
-   let ms = 
-      case ms1 of
-        Nothing -> ms2
-        _ -> ms1
+   let 
+     ms = 
+       case ms1 of
+         Nothing -> ms2
+         _ -> ms1
+     noteLengths =
+       if (List.isEmpty fs) then  -- cover the degenerate case of 'Q: 120' which means 'Q: 1/4=120'
+         [ Ratio.over 1 4]
+       else
+         fs  
    in
-    { noteLengths = fs
+    { noteLengths = noteLengths
     , bpm = i
     , marking = ms
     }
