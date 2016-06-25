@@ -9,11 +9,12 @@ These projects explore the possibilities of playing [ABC notation](http://abcnot
 
 *   Midi-player.  This is a player for MIDI recordings packaged as an autonomous module.  It, in turn, relies on soundfont-ports and is used in projects where the ABC is first converted to MIDI.
 
-The idea is to take ABC input and play it directly in the browser (i.e. without there being any need for server-side rendering or generation of intermediate MIDI files).
-
+The idea is to take ABC input and play it directly in the browser (i.e. without there being any need for server-side rendering or generation of intermediate MIDI files). 
 
 Projects
 --------
+
+In each of these projects, playback is attempted as simply as possible in order to give a clear, unornamented rendition of the tune.  The various notes and chords are played, but chord symbols, grace notes and other ornamentation forms are all ignored.
 
 #### Simple Player
 
