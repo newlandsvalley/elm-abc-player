@@ -77,6 +77,7 @@ type Msg
     | MoveOctave Bool                          -- move the octave (up or down)
     | TuneResult (Result ParseError AbcTune)   -- parsed ABC
     | RequestFileUpload                        -- request an ABC upload
+    | RequestFileDownload                      -- request an ABC download
     | FileLoaded (Maybe String)                -- returned loaded ABC
     | PlayerMsg Midi.Player.Msg                -- delegated messages for the player
 
@@ -107,6 +108,9 @@ update msg model =
 
     RequestFileUpload -> 
        (model, requestLoadFile () )
+
+    RequestFileDownload -> 
+       (model, Cmd.none )
 
     FileLoaded maybes ->
       let
@@ -262,7 +266,12 @@ view model =
                    --, onClick RequestFileUpload
                    , on "change" (Json.succeed RequestFileUpload)
                    , inputStyle
-                   ] []
+                   ] [] 
+           , span [ leftPanelLabelStyle  ]  
+              [ text "Save ABC to file:"   
+              , button ( buttonAttributes True RequestFileDownload )
+                       [ text "save" ] 
+              ]
            , span [ leftPanelLabelStyle ] [text "Transpose to:"]
            , transpositionMenu model 
            , span [ leftPanelLabelStyle ] [text "Move octave:"]     
@@ -490,8 +499,10 @@ bStyle enabled =
         [ ("background-color", "lightgray")
         , ("color", "darkgrey")
         ]
+    textSize =
+      [("font-size", "1em")]
   in
-    style (colour) 
+    style (colour ++ textSize) 
 
 {- style a fieldset -}
 fieldsetStyle : Attribute msg

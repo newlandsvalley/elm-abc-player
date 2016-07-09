@@ -11,6 +11,7 @@ module Music.Notation exposing
   , getKeySet
   , inKeySet
   , getKeySig
+  , getTitle
   , diatonicScale
   , inScale
   , isCOrSharpKey
@@ -40,6 +41,7 @@ module Music.Notation exposing
     , getKeySet
     , inKeySet
     , getKeySig
+    , getTitle
     , diatonicScale   
     , inScale
     , isCOrSharpKey
@@ -149,6 +151,19 @@ getKeySig t =
     List.head ksigs
      |> join
 
+{-| get the Title (if any) from the tune -}
+getTitle : AbcTune -> Maybe String
+getTitle t =
+  let
+    headers = fst t
+    f h = case h of
+      Title title -> Just title
+      _ -> Nothing
+    titles = List.map f headers
+      |> List.filter isJust
+  in 
+    List.head titles
+     |> join
 
 {-| return the set of keys (pitch classes and accidental) that comprise a diatonic scale -}
 diatonicScale : KeySignature -> DiatonicScale
