@@ -15,7 +15,7 @@ port requestSaveFile : Filespec -> Cmd msg
 -- incoming ports (for subscriptions from javascript)
 
 {-| Has the file been loaded OK? -}
-port fileLoaded : (Maybe String -> msg) -> Sub msg
+port fileLoaded : (Maybe Filespec -> msg) -> Sub msg
 
 {-| Has the file been saved OK? -}
 port fileSaved : (Bool -> msg) -> Sub msg

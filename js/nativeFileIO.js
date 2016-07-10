@@ -6,8 +6,10 @@ function loadFile() {
     var reader = new FileReader();
     reader.onload = function(event) {
       var contents = event.target.result;
-      // console.log("File contents: " + contents);
-      myapp.ports.fileLoaded.send(contents);
+      var filespec = {contents:contents, name:selectedFile.name};
+      console.log("File contents: " + contents);
+      console.log("File name: " + selectedFile.name);
+      myapp.ports.fileLoaded.send(filespec);
     };
 
     reader.onerror = function(event) {

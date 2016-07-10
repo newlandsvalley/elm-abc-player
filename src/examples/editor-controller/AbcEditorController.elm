@@ -12,7 +12,7 @@ import Result exposing (Result, formatError)
 import Abc exposing (..)
 import Abc.ParseTree exposing (AbcTune, PitchClass (..), Mode (..), Accidental (..), ModifiedKeySignature, KeySignature)
 import Abc.Canonical exposing (fromResult, fromTune)
-import Music.Notation exposing (getKeySig)
+import Music.Notation exposing (getKeySig, getTitle)
 import Music.Transposition exposing (transposeTo)
 import Music.Octave exposing (up, down)
 import MidiMelody exposing (..)
@@ -39,6 +39,7 @@ main =
 type alias Model =
     {
       abc : String
+    , fileName : Maybe String
     , tuneResult : Result ParseError AbcTune
     , player : Midi.Player.Model
     }
@@ -63,6 +64,7 @@ init =
   in
     { 
       abc = ""
+    , fileName = Nothing
     , tuneResult = Ok emptyTune
     , player = player
     } ! [Cmd.map PlayerMsg playerCmd]
@@ -78,7 +80,7 @@ type Msg
     | TuneResult (Result ParseError AbcTune)   -- parsed ABC
     | RequestFileUpload                        -- request an ABC upload
     | RequestFileDownload                      -- request an ABC download
-    | FileLoaded (Maybe String)                -- returned loaded ABC
+    | FileLoaded (Maybe Filespec)              -- returned loaded ABC
     | PlayerMsg Midi.Player.Msg                -- delegated messages for the player
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -110,15 +112,20 @@ update msg model =
        (model, requestLoadFile () )
 
     RequestFileDownload -> 
-       (model, Cmd.none )
-
-    FileLoaded maybes ->
       let
-         _ = log "elm file input" maybes
+        fileName = getFileName model
+        filespec = Filespec model.abc fileName
       in
-       case maybes of
-         Just s ->
-           ( { model | abc = s }, checkAbc s )
+        (model, requestSaveFile filespec)
+
+    FileLoaded maybef ->
+      let
+         _ = log "input filespec" maybef
+      in
+       case maybef of
+         Just f ->
+           ( { model | abc = f.contents
+                     , fileName = Just f.name }, checkAbc f.contents )
          Nothing ->
            (model, Cmd.none )
 
@@ -127,6 +134,26 @@ update msg model =
         (newPlayer, cmd) = Midi.Player.update playerMsg model.player
       in 
         { model | player = newPlayer } ! [Cmd.map PlayerMsg cmd]
+
+{- get the file name of the tune.  This is either (in order)
+     the name of the file that was originally loaded
+     the tune title (if present) with .abc appended
+     untitled.abc
+-}
+getFileName : Model -> String
+getFileName m =
+  case m.fileName of
+    Just name -> name
+    _ ->
+      case 
+        m.tuneResult of
+          Ok tune ->
+            getTitle tune
+              |> withDefault "untitled"
+              |> (++) ".abc"
+          _ ->
+           "untitled.abc"
+       
 
  
 returnTuneResult : Result ParseError AbcTune -> Cmd Msg
