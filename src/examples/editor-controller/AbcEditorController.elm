@@ -119,9 +119,6 @@ update msg model =
         (model, requestSaveFile filespec)
 
     FileLoaded maybef ->
-      let
-         _ = log "input filespec" maybef
-      in
        case maybef of
          Just f ->
            ( { model | abc = f.contents
@@ -148,11 +145,11 @@ getFileName m =
       case 
         m.tuneResult of
           Ok tune ->
-            getTitle tune
-              |> withDefault "untitled"
-              |> (++) ".abc"
+            (getTitle tune
+              |> withDefault "untitled")
+                ++ ".txt"
           _ ->
-           "untitled.abc"
+           "untitled.txt"
        
 
  
@@ -289,7 +286,7 @@ view model =
              span [ leftPanelLabelStyle  ]  [text "Load an ABC file:"]   
            , input [ type' "file"
                    , id "fileinput"   -- FileIO port requires this exact id to be set 
-                   , accept ".abc" 
+                   , accept ".abc, .txt" 
                    --, onClick RequestFileUpload
                    , on "change" (Json.succeed RequestFileUpload)
                    , inputStyle

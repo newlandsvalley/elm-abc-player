@@ -29,7 +29,7 @@ myapp.ports.requestSaveFile.subscribe(saveFile);
 function saveFile(filespec) {
     var a = document.createElement("a");
     // console.log("File contents: " + filespec.contents);
-    var file = new Blob([filespec.contents], {type: "text/plain"});
+    var file = new Blob([filespec.contents], {type: "text/plain;charset=utf-8"});
     a.href = URL.createObjectURL(file);
     a.download = filespec.name;
     a.click();

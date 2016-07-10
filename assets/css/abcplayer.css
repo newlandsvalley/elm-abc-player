@@ -5,7 +5,7 @@
   margin: 10px 0px 10px 25px;
   font-size: 1.2em;
   background-color: #67d665;  /* lighter green */
-  color: white;
+  color: black;
   box-shadow: 3px 3px #669966;  /* darker green */
   transition: 500ms;
 }
