@@ -147,9 +147,9 @@ getFileName m =
           Ok tune ->
             (getTitle tune
               |> withDefault "untitled")
-                ++ ".txt"
+                ++ ".abc"
           _ ->
-           "untitled.txt"
+           "untitled.abc"
        
 
  

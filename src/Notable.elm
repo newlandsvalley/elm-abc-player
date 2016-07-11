@@ -89,7 +89,7 @@ fromMelodyLine t m =
 toPerformance : Result error MelodyLine -> Result error Performance
 toPerformance ml = 
    let 
-     melody = log "melody" ml
+     melody = {- log "melody" -} ml
    in
      Result.map (fromMelodyLine 0.0) melody
 

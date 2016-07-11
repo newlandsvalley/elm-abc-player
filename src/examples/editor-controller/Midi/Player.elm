@@ -150,7 +150,7 @@ update msg model =
 
     Step -> 
         let 
-          _ = log "step state" model.playbackState
+          -- _ = log "step state" model.playbackState
           soundEvent = nextEvent model.playbackState model.track 
           (newState, midiNotes) = stepState soundEvent model.playbackState
           -- next action is either suspendAndPlay or step
@@ -285,7 +285,7 @@ stepState : SoundEvent -> PlaybackState -> (PlaybackState, MidiNotes)
 stepState soundEvent state = 
   if state.playing then
     let 
-      _ = log "sound event" soundEvent.event
+      _ = {- log "sound event" -} soundEvent.event
     in
       case soundEvent.event of
         MidiTypes.Text t ->
@@ -366,7 +366,7 @@ view model =
 player : Model -> Html Msg
 player model =
   let
-    _ = log "Midi Player view" model.track 
+    -- _ = log "Midi Player view" model.track 
     start = "assets/images/play.png"
     stop  = "assets/images/stop.png"
     pause = "assets/images/pause.png"

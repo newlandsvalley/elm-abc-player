@@ -503,11 +503,11 @@ toMidiTrack melody =
 midiRecordingFromAbc : Bool -> AbcTune -> MidiRecording
 midiRecordingFromAbc expandRepeats tune =
   let
-    _ = log "abc tune" tune
+    -- _ = log "abc tune" tune
     (melody, _) = melodyFromAbc expandRepeats tune
-    _ = log "melody" melody
+    -- _ = log "melody" melody
     track = toMidiTrack melody
-    _ = log "track" track
+    -- _ = log "track" track
     header =    
      { formatType = 0
      , trackCount = 1

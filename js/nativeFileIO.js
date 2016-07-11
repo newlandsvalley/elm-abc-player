@@ -7,8 +7,8 @@ function loadFile() {
     reader.onload = function(event) {
       var contents = event.target.result;
       var filespec = {contents:contents, name:selectedFile.name};
-      console.log("File contents: " + contents);
-      console.log("File name: " + selectedFile.name);
+      // console.log("File contents: " + contents);
+      // console.log("File name: " + selectedFile.name);
       myapp.ports.fileLoaded.send(filespec);
     };
 
@@ -30,9 +30,15 @@ function saveFile(filespec) {
     var a = document.createElement("a");
     // console.log("File contents: " + filespec.contents);
     var file = new Blob([filespec.contents], {type: "text/plain;charset=utf-8"});
-    a.href = URL.createObjectURL(file);
+    url = URL.createObjectURL(file);
+    a.href = url
     a.download = filespec.name;
+    document.body.appendChild(a);
     a.click();
+    setTimeout(function(){
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);  
+    }, 100);  
     myapp.ports.fileSaved.send(true);
 }
 
