@@ -42,7 +42,7 @@ to run, use:
 
 #### Interactive ABC Tutorial
 
-In [tutorial](https://github.com/newlandsvalley/elm-abc-player/tree/master/src/examples/tutorial), the idea is to use the simple player but to take ABC input directly from the user.  She is taken through a succession of exercises, each of which gives a short tutorial on an aspect of ABC together with a tiny ABC sample which illustrates it.  She can play the sample and then tinker with it to see the effect that her changes make.  Samples start with just a few notes and end with a fully-fledged traditional tune illustrating key signatures, tempi, notes of different pitch and duration, triplets, chords, articulation and so on.
+In [tutorial](https://github.com/newlandsvalley/elm-abc-player/tree/master/src/examples/tutorial), the idea is to use the simple player but to take ABC input directly from the user.  She is taken through a succession of exercises, each of which gives a short tutorial on an aspect of ABC together with a tiny ABC sample which illustrates it.  She can play the sample and then tinker with it to see the effect that her changes make.  Samples start with just a few notes and end with a fully-fledged traditional tune illustrating key signatures, tempi, notes of different pitch and duration, triplets, chords, articulation and so on. You can try the tutorial [here](http://www.tradtunedb.org.uk/abctutorial).
 
 to build:
 
@@ -54,7 +54,7 @@ to run, use:
     
 #### ABC Editor with embedded MIDI player
 
-[Editor-controller](https://github.com/newlandsvalley/elm-abc-player/tree/master/src/examples/editor-controller) is another version of the editor above.  However, this one translates the ABC into a [MidiRecording](https://github.com/newlandsvalley/elm-comidi/blob/master/src/MidiTypes.elm) and uses the [midi-player](https://github.com/newlandsvalley/midi-player) module to play the recording.
+[Editor-controller](https://github.com/newlandsvalley/elm-abc-player/tree/master/src/examples/editor-controller) is another version of the editor above.  However, this one translates the ABC into a [MidiRecording](https://github.com/newlandsvalley/elm-comidi/blob/master/src/MidiTypes.elm) and uses the [midi-player](https://github.com/newlandsvalley/midi-player) module to play the recording (which you can stop and start). It includes buttons that allow you to load and save the ABC file. You can use the editor [here](http://www.tradtunedb.org.uk/abceditor).
 
 to build:
 
@@ -65,10 +65,7 @@ to run, use:
     abceditorcontroller.html
     
     
-To do
------
 
-*   Add save button to the editor
 
 
 
