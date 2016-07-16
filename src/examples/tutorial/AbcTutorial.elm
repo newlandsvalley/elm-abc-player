@@ -196,8 +196,8 @@ view model =
   if (model.fontsLoaded) then
     div [ centreStyle ]
       [  
-         h1 [ ] [ text "ABC Tutorial" ]   
-      ,  h2 [ ] [ text (title model.lessonIndex) ]     
+         -- h1 [ ] [ text "ABC Tutorial" ]   
+         h2 [ ] [ text (title model.lessonIndex) ]     
       ,  textarea 
            [
            value  (instruction model.lessonIndex) 
@@ -255,7 +255,7 @@ title i =
     mlesson = Array.get i lessons
   in case mlesson of
     Nothing -> "error"
-    Just l -> "lesson " ++ (toString (i+1) ++ " - " ++ l.title)
+    Just l -> "ABC Tutorial: lesson " ++ (toString (i+1) ++ " - " ++ l.title)
 
 instruction : Int -> String
 instruction i =
