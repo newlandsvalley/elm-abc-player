@@ -163,9 +163,9 @@ buildNewBar nextBarNumber abcBar lastBar =
       { nextBar | repeat = abcBar.repeat, iteration = abcBar.iteration }
 
 
-{- translate a sequence of notes as found in chords (parallel) or tuplets (sequential) -}
-translateNoteSequence : Bool -> TranslationState -> List AbcNote -> Maybe NoteDuration -> List NoteEvent
-translateNoteSequence isSeq state notes maybeChordDur =
+{- translate a chord (parallel sequence) -}
+translateChord : TranslationState -> List AbcNote -> Maybe NoteDuration -> List NoteEvent
+translateChord state notes maybeChordDur =
   let
     -- a chord can have a duration over and above that of any individual note in the chord
     chordDuration =
@@ -175,36 +175,29 @@ translateNoteSequence isSeq state notes maybeChordDur =
     f abc = 
       let 
         duration = 
-          if (isSeq) then
-            (noteDuration state.tempo abc.duration) * state.tempoModifier
-          else
-            (chordalNoteDuration state.tempo abc.duration chordDuration) * state.tempoModifier
+          (chordalNoteDuration state.tempo abc.duration chordDuration) * state.tempoModifier
         barAccidentals = state.thisBar.accidentals
       in
         { time = duration, pitch = toMidiPitch abc state.modifiedKeySignature barAccidentals, pc = Just abc.pitchClass, accidental = abc.accidental}
   in
-    if isSeq then 
-       List.map f notes
-         |> List.map (\a -> ANote a False)
-         |> List.reverse                     -- we need to reverse now we do a left fold
-    else 
-       [AChord (List.map f notes)]
+    [AChord (List.map f notes)]
 
-{- translate a pair of notes, each working under a separate state -}
-translateNotePair : AbcNote -> TranslationState -> AbcNote -> TranslationState -> List NoteEvent
-translateNotePair n1 s1 n2 s2  =
-  let      
-    duration1 = (noteDuration s1.tempo n1.duration) * s1.tempoModifier
-    duration2 = (noteDuration s2.tempo n2.duration) * s2.tempoModifier
-    -- but we'll just accumulate use accidentals in the first state (which will be identical to the second)
-    barAccidentals = s1.thisBar.accidentals
-    note1 = ANote { time = duration1, pitch = toMidiPitch n1 s1.modifiedKeySignature barAccidentals, pc = Just n1.pitchClass, accidental = n1.accidental} False
-    note2 = ANote { time = duration2, pitch = toMidiPitch n2 s2.modifiedKeySignature barAccidentals, pc = Just n2.pitchClass, accidental = n2.accidental} False
+{- translate a sequence of notes as found in tuplets (sequential) -}
+translateNoteSequence : List AbcNote -> TranslationState -> TranslationState
+translateNoteSequence notes state =
+  List.foldl translateNote state notes
+
+{- translate a single note and embed it into the state -}
+translateNote : AbcNote -> TranslationState -> TranslationState
+translateNote abc state =
+  let 
+    duration = (noteDuration state.tempo abc.duration) * state.tempoModifier
+    barAccidentals = state.thisBar.accidentals
+    note = ANote { time = duration, pitch = toMidiPitch abc state.modifiedKeySignature barAccidentals, pc = Just abc.pitchClass, accidental = abc.accidental} abc.tied
   in
-    -- we add them backwards now because we are doing a left fold
-    [note2, note1]
+    addNoteToState note state
 
-{- not at all complete - translate Music items from the parse tree to a melody line - a sequence
+{- translate Music items from the parse tree to a melody line - a sequence
    of bars containing notes, rests and chords where notes are in a MIDI-friendly format
 -}
 translateMusic : Music -> (MelodyLine, TranslationState) -> (MelodyLine, TranslationState)
@@ -215,10 +208,7 @@ translateMusic m acc =
     case m of
       Note abc -> 
         let 
-          duration = (noteDuration state.tempo abc.duration) * state.tempoModifier
-          barAccidentals = state.thisBar.accidentals
-          note = ANote { time = duration, pitch = toMidiPitch abc state.modifiedKeySignature barAccidentals, pc = Just abc.pitchClass, accidental = abc.accidental} abc.tied
-          newState = addNoteToState note state
+          newState = translateNote abc state
         in
           (melodyLine, newState)
       Rest r -> 
@@ -231,32 +221,37 @@ translateMusic m acc =
       Tuplet signature tnotes ->
         let 
           (p,q,r) = signature
-          tupletState = { state | tempoModifier = ( Basics.toFloat q / Basics.toFloat p) }
-          tupletNotes = translateNoteSequence True tupletState tnotes Nothing
-          newState = addNotesToState tupletNotes state
+          tupletStateStart = { state | tempoModifier = ( Basics.toFloat q / Basics.toFloat p) }
+          tupletStateEnd = translateNoteSequence tnotes tupletStateStart
+          -- recover the original tempo in the state but we save any accidentals we've come across
+          newState = { tupletStateEnd | tempoModifier = 1 }
         in 
           (melodyLine, newState)
       BrokenRhythmPair n1 b n2 ->     
         case b of 
           LeftArrow i ->
             let
-              leftState =  { state | tempoModifier = ( 1 - Ratio.toFloat (dotFactor i)) }
-              rightState =  { state | tempoModifier = ( 1 + Ratio.toFloat (dotFactor i)) }
-              notePair = translateNotePair n1 leftState n2 rightState
-              newState = addNotesToState notePair state
+              leftStateStart =  { state | tempoModifier = ( 1 - Ratio.toFloat (dotFactor i)) }
+              leftStateEnd =  translateNote n1 leftStateStart
+              rightStateStart =  { leftStateEnd | tempoModifier = ( 1 + Ratio.toFloat (dotFactor i)) }
+              rightStateEnd =  translateNote n2 rightStateStart
+              -- recover the original tempo in the state but save any accidentals we've come across
+              newState = { rightStateEnd | tempoModifier = 1 }
             in              
               (melodyLine, newState)
           RightArrow i ->
             let
-              leftState =  { state | tempoModifier = ( 1 + Ratio.toFloat (dotFactor i)) }
-              rightState =  { state | tempoModifier = ( 1 - Ratio.toFloat (dotFactor i)) }
-              notePair = translateNotePair n1 leftState n2 rightState
-              newState = addNotesToState notePair state
+              leftStateStart =  { state | tempoModifier = ( 1 + Ratio.toFloat (dotFactor i)) }
+              leftStateEnd =  translateNote n1 leftStateStart
+              rightStateStart =  { leftStateEnd | tempoModifier = ( 1 - Ratio.toFloat (dotFactor i)) }
+              rightStateEnd =  translateNote n2 rightStateStart
+              -- recover the original tempo in the state but save any accidentals we've come across
+              newState = { rightStateEnd | tempoModifier = 1 }
             in              
               (melodyLine, newState)
       Chord abcChord ->
         let 
-          chord = translateNoteSequence False state abcChord.notes (Just abcChord.duration)
+          chord = translateChord state abcChord.notes (Just abcChord.duration)
           newState = addNotesToState chord state
         in             
           (melodyLine, newState)
@@ -296,6 +291,8 @@ translateMusic m acc =
       Inline header ->
         updateState header acc
       _ -> acc
+
+
 
 -- translate an entire melody line from the tune body (up to an end of line)
 toMelodyLine : MusicLine -> (MelodyLine, TranslationState) -> (MelodyLine, TranslationState)

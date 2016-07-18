@@ -36,7 +36,8 @@ type NoteEvent =
 type alias ABar =
    GeneralisedBar NoteEvent
 
-{-
+{- GeneralisedBar is a parameterised type defined in RepeatTypes.elm
+   which makes ABar (when expanded) look like this:
 type alias ABar =
   {  number : Int               -- sequential from zero
   ,  repeat : Maybe Repeat      -- the bar owns a repeat of some kind

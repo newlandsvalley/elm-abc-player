@@ -37,13 +37,14 @@ type MidiInstruction =
 type alias MidiBar =
   GeneralisedBar MidiInstruction
 
-{-
+{- GeneralisedBar is a parameterised type defined in RepeatTypes.elm
+   which makes MidiBar (when expanded) look like this:
 type alias MidiBar =
   {  number : Int               -- sequential from zero
   ,  repeat : Maybe Repeat      -- the bar owns a repeat of some kind
   ,  iteration : Maybe Int      -- the bar has an iteration marker  (|1  or |2 etc)
   ,  accidentals : Accidentals  -- any notes marked explicitly as accidentals in the bar (updated in sequence)
-  ,  notes : List MidiEvent     -- the notes in the bar
+  ,  notes : List MidiNote      -- the notes in the bar
   }
 -}
 
