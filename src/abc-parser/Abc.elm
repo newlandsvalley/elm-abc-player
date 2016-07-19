@@ -82,19 +82,35 @@ scoreItem = rec <| \() ->
       <?> "score item"   
 
 
-{- a bar line (plus optional repeat iteration marker)
+barline : Parser Music
+barline =
+  choice
+    [ normalBarline
+    , degenerateBarRepeat
+    ]
+
+
+{- a normal bar line (plus optional repeat iteration marker)
    see comments in 4.8 Repeat/bar symbols:
    Abc parsers should be quite liberal in recognizing bar lines. In the wild, bar lines may have 
    any shape, using a sequence of | (thin bar line), [| or |] (thick bar line), and : (dots), e.g. |[| or [|::: 
 -}
-barline : Parser Music
-barline = buildBarline <$> barSeparator <*> maybe repeatSection
+normalBarline : Parser Music
+normalBarline = buildBarline <$> barSeparator <*> maybe repeatSection
             <?> "barline"
 
-{-
-barline = buildBarline <$> barSeparator <*> maybe Combine.Num.digit
-             <?> "barline"
+{- sometimes in the wild we get a degenerate repeat marker at the start of a line of music like this:
+     [1 .....
+   or
+     _[1 ....
+   again we have to be careful about ambiguity between this and inline headers by making sure we parse '[' immediately followed by '1' etc.
 -}
+degenerateBarRepeat : Parser Music
+degenerateBarRepeat = 
+  Barline <$>
+    (Bar Thin Nothing <$>
+      (Just <$>
+        (whiteSpace *> char '[' *> Combine.Num.digit)))
 
 {- written like this instead of a regex because it's all regex control character! -}
 barSeparator : Parser String
