@@ -166,6 +166,33 @@ toInt : String -> Int
 toInt = String.toInt >> Result.toMaybe >> Maybe.withDefault 0
 
 {- play the ABC and return the duration in the amended model -}
+
+playAbc : Model -> (Model, Cmd Msg)
+playAbc m = 
+  let 
+    abcTuneResult = 
+      m.abc
+        |> terminateLine
+        |> parse 
+    in
+      case abcTuneResult of
+        Ok _ ->
+          let 
+            notesReversed =
+              abcTuneResult 
+               |> melodyFromAbcResult 
+               |> toPerformance
+               |> makeMIDINotes
+            -- _ = log "notes reversed" notesReversed
+            duration =
+              reversedPhraseDuration notesReversed
+          in 
+            ( { m | playing = True
+                  , duration = duration }, requestPlayNoteSequence (List.reverse notesReversed) )   
+        Err error -> 
+            ( { m | error = Just error }, returnError error )   
+
+{-
 playAbc : Model -> (Model, Cmd Msg)
 playAbc m = 
   let 
@@ -182,6 +209,7 @@ playAbc m =
   in 
     ( { m | playing = True
           , duration = duration }, requestPlayNoteSequence (List.reverse notesReversed) )   
+-}
 
 -- VIEW
 
@@ -189,7 +217,8 @@ viewError : Maybe ParseError -> String
 viewError me =
   case me of
     Nothing -> ""
-    Just e -> parseError e 
+    Just pe ->
+       "parse error: " ++ pe.input ++ " at position " ++ toString (pe.position)
 
 view : Model -> Html Msg
 view model =
