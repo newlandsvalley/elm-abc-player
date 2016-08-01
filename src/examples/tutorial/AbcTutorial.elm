@@ -220,41 +220,48 @@ viewError me =
     Just pe ->
        "parse error: " ++ pe.input ++ " at position " ++ toString (pe.position)
 
+
 view : Model -> Html Msg
 view model =
   if (model.fontsLoaded) then
-    div [ centreStyle ]
+    div [  ]
       [  
-         -- h1 [ ] [ text "ABC Tutorial" ]   
-         h2 [ ] [ text (title model.lessonIndex) ]     
-      ,  textarea 
+        h2 [ centreStyle ] [ text (title model.lessonIndex) ]     
+      , textarea 
            [
-           value  (instruction model.lessonIndex) 
+             centreStyle
+           , value  (instruction model.lessonIndex) 
            , instructionStyle
            , readonly True
            , cols 96
            , rows 6
            ]
            [ ]
-      ,  fieldset [ fieldsetStyle ]
-           [
-             legend [ legendStyle ] [ text "you can edit the text inside the box and then hit play" ]
-           , textarea
-               ([ 
-               placeholder "abc"
-               , value model.abc
-               , onInput Abc 
-               , taStyle
-               , cols 70
-               , rows 12
-               , autocomplete False
-               , spellcheck False
-               , autofocus True
-               ] ++ highlights model)
-               [  ] 
-           ]
+      ,  div []
+          [
+             fieldset [ fieldsetStyle ]
+             [
+               legend [ legendStyle ] [ text "you can edit the text inside the box and then hit play" ]
+             , textarea
+                 ([ 
+                    placeholder "abc"
+                  , value model.abc
+                  , onInput Abc 
+                  , taStyle
+                  , cols 70
+                  , rows 15
+                  , autocomplete False
+                  , spellcheck False
+                  , autofocus True
+                  ] ++ highlights model)
+                   [  ] 
+             ]
+          , img [ src (scoreUrl model.lessonIndex) 
+                ,  rightImageStyle ]
+              [ ]
+          ]
       ,  div
-         [ centreStyle ]       
+         [ leftPaneCentreStyle ]       
            [  
               button ( buttonAttributes (not model.playing) (MoveToEnd False))
                        [ text "first" ]
@@ -268,9 +275,9 @@ view model =
                        [ text "last" ]
            ]
       ,  div 
-         [ centreStyle ] 
-           [ p [] [ text (hint model.lessonIndex) ] 
-           , p [] [ text (viewError model.error) ] 
+         [ leftPaneCentreStyle ] 
+           [ p [ ] [ text (hint model.lessonIndex) ] 
+           , p [ ] [ text (viewError model.error) ] 
            ]
       ]
   else
@@ -309,6 +316,14 @@ hint i =
   in case mlesson of
     Nothing -> ""
     Just l -> l.hint
+
+scoreUrl : Int -> String
+scoreUrl i =
+  let 
+    mlesson = Array.get i lessons
+  in case mlesson of
+    Nothing -> ""
+    Just l -> "assets/images/tutorial/" ++ l.id ++ ".png"
        
 
 
@@ -353,6 +368,31 @@ centreStyle =
      ,  ("margin", "auto") 
      ]
 
+leftPaneStyle : Attribute msg
+leftPaneStyle =
+  style
+     [
+        ("float", "left") 
+     ,  ("width", "800px")     
+     ]
+
+leftPaneCentreStyle : Attribute msg
+leftPaneCentreStyle =
+  style
+     [
+       ("float", "left") 
+     , ("margin-left", "200px")
+     ]
+
+
+rightImageStyle : Attribute msg
+rightImageStyle =
+  style
+     [
+        ("position", "absolute")
+     ]
+
+
 {- gather together all the button attributes -}
 buttonAttributes : Bool -> Msg -> List (Attribute Msg)
 buttonAttributes isEnabled msg =
@@ -389,6 +429,8 @@ fieldsetStyle =
     , ("border", "none")
     , ("border-radius", "2px")
     , ("margin-bottom", "12px")
+    , ("margin-left", "12px")
+    , ("margin-right", "12px")
     , ("padding", "10px 10px 20px 10px")
     , ("display", "inline-block")
     ]
