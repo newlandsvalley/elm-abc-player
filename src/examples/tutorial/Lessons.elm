@@ -101,7 +101,7 @@ instStrathspey =
   " This rhythm is found in strathspeys." 
 
 xmplStrathspey =
-  "| G | c2 e>c G<c e>g | c'2 b>c' a<c' g>e |"
+  "| G | c2 e>c G<c e>g |\r\n| c'2 b>c' a<c' g>e |"
 
 instChords = 
    "You can play a chord by placing a group of notes, adjacent to each other, inside square brackets - for example [acE]." ++
