@@ -340,6 +340,7 @@ taStyle =
     , ("margin-left", "auto")
     , ("margin-right", "auto")
     , ("background-color",  "#f3f6c6")
+    , ("font-family", "monospace")
     ]
 
 
