@@ -1,7 +1,8 @@
 module Test.MidiPerformance exposing 
   (tests) 
 
-import ElmTest exposing (..)
+import Test exposing (..)
+import Expect exposing (..)
 import Abc exposing (ParseError, parse, parseKeySignature, parseError)
 import Abc.ParseTree exposing (..)
 import MidiPerformance exposing (..)
@@ -41,46 +42,43 @@ getSecondBarNotes s =
 
 
 {- show bar 2 and assert we have some notes -}
-showBar2Notes : String -> Assertion
+showBar2Notes : String -> Expectation
 showBar2Notes s = 
   let 
-    bar1Notes = getSecondBarNotes s
+    bar2Notes = getSecondBarNotes s
   in 
-    if List.isEmpty bar1Notes then
-      assert False
-    else
-      let
-         _ = log "bar 1 notes" bar1Notes
-      in
-        assert True 
+    Expect.false "non empty bar" (List.isEmpty bar2Notes)
 
 {- assert the notes match the target from bar 2 in the melody line -}
-assertBar2Notes : String -> List MidiInstruction -> Assertion
+assertBar2Notes : String -> List MidiInstruction -> Expectation
 assertBar2Notes s target = 
-  assertEqual target (getSecondBarNotes s)
+  Expect.equal target (getSecondBarNotes s)
 
 
 tests : Test
-tests =
-  let 
-    midiMelody = 
-      suite "MIDI melody"
-        [ 
-          test "sequence" (assertBar2Notes sequence sequenceM)
-        , test "chord" (assertBar2Notes chord chordM)
-        , test "triplet" (assertBar2Notes triplet tripletM)
-        , test "broken rhythm up" (assertBar2Notes brokenRhythmUp brokenRhythmUpM)
-        , test "broken rhythm down" (assertBar2Notes brokenRhythmDown brokenRhythmDownM)
-        , test "tied sequence" (assertBar2Notes sequenceTied sequenceTiedM)
-        , test "sequence with accidental" (assertBar2Notes sequenceAccidental sequenceAccidentalM)
-        , test "triplet with accidental" (assertBar2Notes tripletAccidental tripletAccidentalM)
-        , test "broken rhythm with accidental" (assertBar2Notes brokenRhythmAccidental brokenRhythmAccidentalM)
-        , test "broken rhythm with internal accidental" (assertBar2Notes brokenRhythmInternalAccidental brokenRhythmInternalAccidentalM)
+tests = 
+  describe "MIDI Performance melody line"
+        [ test "sequence" <|
+            \() -> (assertBar2Notes sequence sequenceM)
+        , test "chord" <|
+            \() -> (assertBar2Notes chord chordM)
+        , test "triplet" <|
+            \() -> (assertBar2Notes triplet tripletM)
+        , test "broken rhythm up" <| 
+            \() -> (assertBar2Notes brokenRhythmUp brokenRhythmUpM)
+        , test "broken rhythm down" <|
+            \() -> (assertBar2Notes brokenRhythmDown brokenRhythmDownM)
+        , test "tied sequence" <|
+            \() -> (assertBar2Notes sequenceTied sequenceTiedM)
+        , test "sequence with accidental" <|
+            \() -> (assertBar2Notes sequenceAccidental sequenceAccidentalM)
+        , test "triplet with accidental" <|
+            \() -> (assertBar2Notes tripletAccidental tripletAccidentalM)
+        , test "broken rhythm with accidental" <|
+            \() -> (assertBar2Notes brokenRhythmAccidental brokenRhythmAccidentalM)
+        , test "broken rhythm with internal accidental" <|
+            \() -> (assertBar2Notes brokenRhythmInternalAccidental brokenRhythmInternalAccidentalM)
         ]
-  in
-    suite "MIDI Performance"
-      [  midiMelody
-      ]
 
 -- each test should just investigate a single bar
 

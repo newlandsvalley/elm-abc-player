@@ -1,7 +1,8 @@
 module Test.AbcPerformance exposing 
   (tests) 
 
-import ElmTest exposing (..)
+import Test exposing (..)
+import Expect exposing (..)
 import Abc exposing (ParseError, parse, parseKeySignature, parseError)
 import Abc.ParseTree exposing (..)
 import AbcPerformance exposing (..)
@@ -38,45 +39,44 @@ getFirstBarNotes s =
 
 
 {- show bar 1 and assert we have some notes -}
-showBar1Notes : String -> Assertion
+showBar1Notes : String -> Expectation
 showBar1Notes s = 
   let 
     bar1Notes = getFirstBarNotes s
   in 
-    if List.isEmpty bar1Notes then
-      assert False
-    else
-      let
-         _ = log "bar 1 notes" bar1Notes
-      in
-        assert True 
+    Expect.false "non empty bar" (List.isEmpty bar1Notes)
+  
 
 {- assert the notes match the target from bar 1 in the melody line -}
-assertBar1Notes : String -> List NoteEvent -> Assertion
+assertBar1Notes : String -> List NoteEvent -> Expectation
 assertBar1Notes s target = 
-  assertEqual target (getFirstBarNotes s)
+  Expect.equal target (getFirstBarNotes s)
 
 
 tests : Test
-tests =
-  let 
-    melodyLine = 
-      suite "melody line"
-        [ test "sequence" (assertBar1Notes sequence sequenceM)
-        , test "chord" (assertBar1Notes chord chordM)
-        , test "triplet" (assertBar1Notes triplet tripletM)
-        , test "broken rhythm up" (assertBar1Notes brokenRhythmUp brokenRhythmUpM)
-        , test "broken rhythm down" (assertBar1Notes brokenRhythmDown brokenRhythmDownM)
-        , test "tied sequence" (assertBar1Notes sequenceTied sequenceTiedM)
-        , test "sequence with accidental" (assertBar1Notes sequenceAccidental sequenceAccidentalM)
-        , test "triplet with accidental" (assertBar1Notes tripletAccidental tripletAccidentalM)
-        , test "broken rhythm with accidental" (assertBar1Notes brokenRhythmAccidental brokenRhythmAccidentalM)
-        , test "broken rhythm with internal accidental" (assertBar1Notes brokenRhythmInternalAccidental brokenRhythmInternalAccidentalM)
+tests = 
+  describe "ABC Performance melody line"
+        [ test "sequence" <|
+            \() -> (assertBar1Notes sequence sequenceM)
+        , test "chord" <|
+            \() -> (assertBar1Notes chord chordM)
+        , test "triplet" <|
+            \() -> (assertBar1Notes triplet tripletM)
+        , test "broken rhythm up" <| 
+            \() -> (assertBar1Notes brokenRhythmUp brokenRhythmUpM)
+        , test "broken rhythm down" <|
+            \() -> (assertBar1Notes brokenRhythmDown brokenRhythmDownM)
+        , test "tied sequence" <|
+            \() -> (assertBar1Notes sequenceTied sequenceTiedM)
+        , test "sequence with accidental" <|
+            \() -> (assertBar1Notes sequenceAccidental sequenceAccidentalM)
+        , test "triplet with accidental" <|
+            \() -> (assertBar1Notes tripletAccidental tripletAccidentalM)
+        , test "broken rhythm with accidental" <|
+            \() -> (assertBar1Notes brokenRhythmAccidental brokenRhythmAccidentalM)
+        , test "broken rhythm with internal accidental" <|
+            \() -> (assertBar1Notes brokenRhythmInternalAccidental brokenRhythmInternalAccidentalM)
         ]
-  in
-    suite "ABC Performance"
-      [  melodyLine
-      ]
 
 -- each test should just investigate a single bar
 
