@@ -115,8 +115,8 @@ type Msg
       -- transpose the ABC
     | MoveOctave Bool
       -- move the octave (up or down)
-    | TuneResult (Result ParseError AbcTune)
-      -- parsed ABC
+    | EstablishRecording (Result ParseError AbcTune)
+      -- establish the recording of the parsed ABC
     | RequestFileUpload
       -- request an ABC upload
     | RequestFileDownload
@@ -146,26 +146,26 @@ update msg model =
                 newModel =
                     { model | abc = s }
             in
-                displayScore newModel
+                displayScoreAndPlayer newModel
 
         Transpose s ->
             let
-                newmodel =
+                newModel =
                     transpose s model
             in
-                ( newmodel, establishRecording newmodel.tuneResult )
+                displayScoreAndPlayer newModel
 
         MoveOctave isUp ->
             let
-                newmodel =
+                newModel =
                     if isUp then
                         moveOctave up model
                     else
                         moveOctave down model
             in
-                ( newmodel, establishRecording newmodel.tuneResult )
+                displayScoreAndPlayer newModel
 
-        TuneResult tr ->
+        EstablishRecording tr ->
             ( { model | tuneResult = tr }, establishRecording tr )
 
         RequestFileUpload ->
@@ -191,7 +191,7 @@ update msg model =
                                 , fileName = Just f.name
                             }
                     in
-                        displayScore newModel
+                        displayScoreAndPlayer newModel
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -210,9 +210,7 @@ update msg model =
                     VexTab.update vextabMsg model.vextab
             in
                 { model | vextab = newVextab }
-                    ! [ Cmd.map VexTabMsg cmd
-                      , establishRecording model.tuneResult
-                      ]
+                    ! [ Cmd.map VexTabMsg cmd ]
 
         TranslateToVex ->
             let
@@ -266,10 +264,10 @@ getFileName m =
 
 
 
-{- }
-   returnTuneResult : Result ParseError AbcTune -> Cmd Msg
-   returnTuneResult r =
-       Task.perform (\_ -> NoOp) TuneResult (Task.succeed r)
+{- establish the recording by issuing the appropriate command
+   to the player.  I can probably make this simpler then the rather
+   convoluted Task.perofrm by incorporating all the logic
+   in the update function
 -}
 
 
@@ -301,12 +299,15 @@ toMidiRecording r =
 
 
 {- continually parse the ABC after any keystroke, file load or transposition
-   and then display the score if it's valid
+   and then display the score and actibate the player if it's valid
+
+   this thus issues a batch of two commands, the first to render the score,
+   the second to establish the MIDI recording for the player
 -}
 
 
-displayScore : Model -> ( Model, Cmd Msg )
-displayScore model =
+displayScoreAndPlayer : Model -> ( Model, Cmd Msg )
+displayScoreAndPlayer model =
     let
         terminatedAbc =
             terminateLine model.abc
@@ -319,28 +320,20 @@ displayScore model =
     in
         case tuneResult of
             Ok tune ->
-                update TranslateToVex newModel
+                let
+                    ( model1, cmd1 ) =
+                        update TranslateToVex newModel
+
+                    ( model2, cmd2 ) =
+                        update (EstablishRecording tuneResult) model1
+                in
+                    model2 ! [ cmd1, cmd2 ]
 
             _ ->
-                update (TuneResult tuneResult) newModel
+                update (EstablishRecording tuneResult) newModel
 
 
 
-{- continually parse the ABC after every key stroke -}
-{- }
-   checkAbc : String -> Cmd Msg
-   checkAbc abc =
-       let
-           terminatedAbc =
-               terminateLine abc
-
-           -- _ = "checking" terminatedAbc
-           pr =
-               parse terminatedAbc
-       in
-           returnTuneResult (pr)
--}
-{- handle the upload request -}
 {- transpose the tune to a new key -}
 
 
