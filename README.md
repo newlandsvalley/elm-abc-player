@@ -9,6 +9,8 @@ These projects explore the possibilities of playing [ABC notation](http://abcnot
 
 *   Midi-player.  This is a player for MIDI recordings packaged as an autonomous module.  It, in turn, relies on soundfont-ports and is used in projects where the ABC is first converted to MIDI.
 
+*   Elm-vextab.  This is a wrapper around the [VexTab](https://github.com/0xfe/vextab) API into [VexFlow](https://github.com/0xfe/vexflow) which is a JavaScript library for rendering music notation. 
+
 The idea is to take ABC input and play it directly in the browser (i.e. without there being any need for server-side rendering or generation of intermediate MIDI files). 
 
 Projects
