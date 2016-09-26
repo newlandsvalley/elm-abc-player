@@ -54,7 +54,7 @@ to run, use:
     
 #### ABC Editor with embedded MIDI player
 
-[Editor-controller](https://github.com/newlandsvalley/elm-abc-player/tree/master/src/examples/editor-controller) is another version of the editor above.  However, this one translates the ABC into a [MidiRecording](https://github.com/newlandsvalley/elm-comidi/blob/master/src/MidiTypes.elm) and uses the [midi-player](https://github.com/newlandsvalley/midi-player) module to play the recording (which you can stop and start). It includes buttons that allow you to load and save the ABC file. You can use the editor [here](http://www.tradtunedb.org.uk/abceditor).
+[Editor-controller](https://github.com/newlandsvalley/elm-abc-player/tree/master/src/examples/editor-controller) is another version of the editor above.  However, this one translates the ABC into a [MidiRecording](https://github.com/newlandsvalley/elm-comidi/blob/master/src/MidiTypes.elm) and uses the [midi-player](https://github.com/newlandsvalley/midi-player) module to play the recording (which you can stop and start). It includes buttons that allow you to load and save the ABC file. It now also includes an experimental feature which attempts to display the growing score as the ABC is being edited using a renderer based on an alpha release of [VexTab](http://www.vexflow.com/vextab/). You can use older versions of the editor [here](http://www.tradtunedb.org.uk/abceditor).
 
 to build:
 
