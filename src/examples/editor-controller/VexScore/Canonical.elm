@@ -42,13 +42,19 @@ nicelySpace xs =
         |> String.concat
 
 
+options : String
+options =
+    "options beam-rests=false\x0D\n"
+
+
 toScoreText : Score -> String
 toScoreText score =
     let
         f vl acc =
             acc ++ vexBodyPart vl
     in
-        List.foldl f "" score
+        options
+            ++ List.foldl f "" score
 
 
 vexBodyPart : VexBodyPart -> String
@@ -64,7 +70,7 @@ vexBodyPart bp =
 
 vexLine : VexLine -> String
 vexLine vl =
-    vexStave vl.stave ++ vexItems vl.items
+    vexStave vl.stave ++ (vexItems vl.items) ++ "\x0D\n"
 
 
 vexStave : VexStave -> String
@@ -96,8 +102,7 @@ vexStave vs =
                 _ ->
                     ""
     in
-        "\x0D\n"
-            ++ (nicelySpace [ "stave notation=true", clef, key, time, eol, "notes" ])
+        (nicelySpace [ "stave notation=true", clef, key, time, eol, "notes" ])
 
 
 vexItems : List VexItem -> String
