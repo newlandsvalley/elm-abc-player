@@ -286,7 +286,7 @@ establishRecording r =
 
 terminateLine : String -> String
 terminateLine s =
-    s ++ "\x0D\n"
+    s ++ " \x0D\n"
 
 
 toMidiRecording : Result ParseError AbcTune -> Result String MidiRecording
