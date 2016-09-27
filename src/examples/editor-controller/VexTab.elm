@@ -1,4 +1,11 @@
-module VexTab exposing (Model, Msg(RequestRenderScore), init, update, subscriptions)
+module VexTab
+    exposing
+        ( Model
+        , Msg(RequestRenderScore)
+        , init
+        , update
+        , subscriptions
+        )
 
 {-|
 Interface to VexTab native functionality

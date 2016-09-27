@@ -49,7 +49,6 @@ type alias Model =
     , fileName : Maybe String
     , tuneResult : Result ParseError AbcTune
     , vextab : VexTab.Model
-    , vexError : Maybe String
     , player : Midi.Player.Model
     }
 
@@ -95,7 +94,6 @@ init =
         , fileName = Nothing
         , tuneResult = Ok emptyTune
         , vextab = vextabModel
-        , vexError = Nothing
         , player = player
         }
             ! [ Cmd.map PlayerMsg playerCmd
@@ -232,7 +230,7 @@ update msg model =
                             { model | vextab = newVextab } ! [ Cmd.map VexTabMsg cmd ]
 
                     Err e ->
-                        { model | vexError = Just e } ! [ Cmd.none ]
+                        model ! [ Cmd.none ]
 
 
 
@@ -529,7 +527,7 @@ view model =
                 , div []
                     [ canvas
                         [ id "vextab"
-                        , hidden (isParseError model || isJust model.vexError)
+                        , hidden (isParseError model || isJust model.vextab.error)
                         ]
                         []
                     ]

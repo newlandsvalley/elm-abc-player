@@ -153,7 +153,10 @@ barSeparator =
         <$> (many1 <|
                 choice
                     [ string "[|"
+                    , string "|]:"
+                      -- must come before |] otherwise it hides it
                     , string "|]"
+                    , string ":[|"
                     , string "|:"
                     , string ":|"
                     , string "::"
