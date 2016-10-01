@@ -73,9 +73,11 @@ vexLine vl =
     vexStave vl.stave ++ (vexItems vl.items) ++ "\x0D\n"
 
 
-vexStave : VexStave -> String
-vexStave vs =
-    let
+vexStave : Maybe VexStave -> String
+vexStave mvs =
+  case mvs of
+    Just vs ->
+      let
         clef =
             "clef=" ++ ((String.toLower << toString) (vs.clef))
 
@@ -101,8 +103,11 @@ vexStave vs =
 
                 _ ->
                     ""
-    in
+      in
         (nicelySpace [ "stave notation=true", clef, key, time, eol, "notes" ])
+        
+    Nothing -> 
+      " notes"
 
 
 vexItems : List VexItem -> String

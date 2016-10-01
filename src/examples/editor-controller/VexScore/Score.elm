@@ -22,7 +22,7 @@ type VexBodyPart
 
 
 type alias VexLine =
-    { stave : VexStave
+    { stave : Maybe VexStave
     , items : List VexItem
     }
 
