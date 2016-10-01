@@ -44,12 +44,33 @@ main =
 -- MODEL
 
 
+type
+    VexTranslationState
+    -- we've not attempted to translate to Vex yet
+    = Untranslated
+      -- we hace translated but maybe it's in error
+    | Translated (Maybe String)
+
+
 type alias Model =
-    { abc : String
-    , fileName : Maybe String
-    , tuneResult : Result ParseError AbcTune
-    , vextab : VexTab.Model
-    , player : Midi.Player.Model
+    { abc :
+        String
+        -- the ABC text
+    , fileName :
+        Maybe String
+        -- the file name (if we have one)
+    , tuneResult :
+        Result ParseError AbcTune
+        -- the parsed tune
+    , vexTranslationState :
+        VexTranslationState
+        -- the translation state of the parsed tune to VexTab
+    , vextab :
+        VexTab.Model
+        -- the embedded VexTab model (VexTab text and error message)
+    , player :
+        Midi.Player.Model
+        -- the embedded MIDI player
     }
 
 
@@ -93,6 +114,7 @@ init =
         { abc = ""
         , fileName = Nothing
         , tuneResult = Ok emptyTune
+        , vexTranslationState = Untranslated
         , vextab = vextabModel
         , player = player
         }
@@ -129,8 +151,8 @@ type Msg
 
 
 
--- delegated to VexTab
--- delegated messages for the player
+-- stuff returned back from VexTab
+{- main update function -}
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -227,10 +249,14 @@ update msg model =
                             ( newVextab, cmd ) =
                                 VexTab.update (VexTab.RequestRenderScore (toScoreText vexScore)) model.vextab
                         in
-                            { model | vextab = newVextab } ! [ Cmd.map VexTabMsg cmd ]
+                            { model
+                                | vextab = newVextab
+                                , vexTranslationState = Translated Nothing
+                            }
+                                ! [ Cmd.map VexTabMsg cmd ]
 
                     Err e ->
-                        model ! [ Cmd.none ]
+                        { model | vexTranslationState = Translated (Just e) } ! [ Cmd.none ]
 
 
 
@@ -471,6 +497,36 @@ viewError m =
                 text ""
 
 
+
+{- return true if we have an ABC parse errror -}
+
+
+isParseError : Model -> Bool
+isParseError model =
+    case model.tuneResult of
+        Ok _ ->
+            False
+
+        _ ->
+            True
+
+
+
+{- hide the score if it's untranslated into Vex or if it's a vexNote
+   translation error or a vex error in producing the score
+-}
+
+
+hideScore : Model -> Bool
+hideScore model =
+    case model.vexTranslationState of
+        Translated Nothing ->
+            (isJust model.vextab.error || isParseError model)
+
+        _ ->
+            True
+
+
 view : Model -> Html Msg
 view model =
     if (True) then
@@ -527,7 +583,8 @@ view model =
                 , div []
                     [ canvas
                         [ id "vextab"
-                        , hidden (isParseError model || isJust model.vextab.error)
+                          -- , hidden (isParseError model || isJust model.vextab.error),
+                        , hidden (hideScore model)
                         ]
                         []
                     ]
@@ -537,16 +594,6 @@ view model =
         div [ centreStyle ]
             [ p [] [ text "It seems as if your browser does not support web-audio.  Perhaps try Chrome." ]
             ]
-
-
-isParseError : Model -> Bool
-isParseError model =
-    case model.tuneResult of
-        Ok _ ->
-            False
-
-        _ ->
-            True
 
 
 

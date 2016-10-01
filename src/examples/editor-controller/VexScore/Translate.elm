@@ -27,7 +27,7 @@ type alias Context =
     , decoration :
         Maybe String
         -- decorate the next note (staccato etc)
-    , continuation : 
+    , continuation :
         Bool
         -- end of line continuation
     }
@@ -110,16 +110,18 @@ vexLine ctx line =
                 |> Just
 
         vexStave =
-          if (ctx.continuation) then
-            Nothing
-          else
-            Just { clef = Treble, mKey = mKey, mMeter = ctx.meter }
+            if (ctx.continuation) then
+                Nothing
+            else
+                Just { clef = Treble, mKey = mKey, mMeter = ctx.meter }
 
         {- now we've processed the stave, remove the key signature from the context#
            which we don't need to generate any longer unless there's a key changes
+           and now we've processed any possible end-of-line continuation then
+           remove it from the comtext
         -}
         staveCtx =
-            { ctx | meter = Nothing }
+            { ctx | meter = Nothing, continuation = False }
 
         itemsRes =
             musicLine staveCtx line
@@ -242,8 +244,12 @@ music ctx m =
                         Err ("Note " ++ e ++ ": " ++ (AbcText.abcNote abcNote2))
 
         Decoration decor ->
-            Ok ( VIgnore, { ctx | decoration = Just decor } ) 
-            
+            Ok ( VIgnore, { ctx | decoration = Just decor } )
+
+        -- Inline headers not properly supported yet in VexTab
+        Inline header ->
+            inlineHeader ctx header
+
         Continuation ->
             Ok ( VIgnore, { ctx | continuation = True } )
 
@@ -278,7 +284,7 @@ note ctx abcNote =
                        apply to the next note...
                     -}
                     newCtx =
-                        { ctx | tied = abcNote.tied, decoration = Nothing, continuation = False }
+                        { ctx | tied = abcNote.tied, decoration = Nothing }
                 in
                     -- Ok ( VNote vexNote, ctx )
                     Ok ( vexNote, newCtx )
@@ -400,6 +406,8 @@ noteList ctx notes =
 {- cater for a new header inside the tune body after a line has completed
    we need to cater for changes in key signature, meter or unit note length
    which all alter the translation context.  All other headers may be ignored
+
+   These are headers within the tune body occupying a line of their own
 -}
 
 
@@ -417,6 +425,29 @@ header ctx h =
 
         _ ->
             ctx
+
+
+
+{- Cater for inline headers (embedded within the growing stave)
+   These are not properly supported yet by VexTab and so
+   changes in key or time signature raise errors
+-}
+
+
+inlineHeader : Context -> Header -> Result String ( VexItem, Context )
+inlineHeader ctx h =
+    case h of
+        Key mks ->
+            Err "inline key signature changes not supported"
+
+        Meter meter ->
+            Err "inline time signature changes not supported"
+
+        UnitNoteLength dur ->
+            Ok ( VIgnore, { ctx | unitNoteLength = dur } )
+
+        _ ->
+            Ok ( VIgnore, ctx )
 
 
 
