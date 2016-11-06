@@ -75,39 +75,39 @@ vexLine vl =
 
 vexStave : Maybe VexStave -> String
 vexStave mvs =
-  case mvs of
-    Just vs ->
-      let
-        clef =
-            "clef=" ++ ((String.toLower << toString) (vs.clef))
+    case mvs of
+        Just vs ->
+            let
+                clef =
+                    "clef=" ++ ((String.toLower << toString) (vs.clef))
 
-        time =
-            case vs.mMeter of
-                Just m ->
-                    "time=" ++ toString (fst m) ++ "/" ++ toString (snd m)
+                time =
+                    case vs.mMeter of
+                        Just m ->
+                            "time=" ++ toString (fst m) ++ "/" ++ toString (snd m)
 
-                _ ->
-                    ""
+                        _ ->
+                            ""
 
-        key =
-            case vs.mKey of
-                Just k ->
-                    let
-                        accidental =
-                            headerAccidental k.accidental
+                key =
+                    case vs.mKey of
+                        Just k ->
+                            let
+                                accidental =
+                                    headerAccidental k.accidental
 
-                        md =
-                            mode k.mode
-                    in
-                        "key=" ++ toString k.pitchClass ++ accidental ++ md
+                                md =
+                                    mode k.mode
+                            in
+                                "key=" ++ toString k.pitchClass ++ accidental ++ md
 
-                _ ->
-                    ""
-      in
-        (nicelySpace [ "stave notation=true", clef, key, time, eol, "notes" ])
-        
-    Nothing -> 
-      " notes"
+                        _ ->
+                            ""
+            in
+                (nicelySpace [ "stave notation=true", clef, key, time, eol, "notes" ])
+
+        Nothing ->
+            " notes"
 
 
 vexItems : List VexItem -> String
@@ -148,12 +148,18 @@ vexItem vi =
                 ++ "^"
 
         VChord dur vnotes ->
-            " ( "
-                ++ (List.map (vexNote Chordal) vnotes
-                        |> List.intersperse "."
-                        |> String.concat
-                   )
-                ++ " )"
+            let
+                chordDur =
+                    noteDur dur
+            in
+                " "
+                    ++ chordDur
+                    ++ " ( "
+                    ++ (List.map (vexNote Chordal) vnotes
+                            |> List.intersperse "."
+                            |> String.concat
+                       )
+                    ++ " )"
 
         VNotePair vnote1 vnote2 ->
             vexNote Staved vnote1

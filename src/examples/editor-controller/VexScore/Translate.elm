@@ -189,7 +189,6 @@ music ctx m =
                         Err e
 
         Chord abcChord ->
-            -- not finished - we need to take account of the overall chord duration
             let
                 notesResult =
                     noteList ctx abcChord.notes
