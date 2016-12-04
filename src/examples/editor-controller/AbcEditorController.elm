@@ -748,6 +748,9 @@ tempoSlider m =
             let
                 bpm =
                     getBpm tune
+
+                playing =
+                    m.player.playbackState.playing
             in
                 input
                     [ type_ "range"
@@ -756,6 +759,8 @@ tempoSlider m =
                     , Html.Attributes.max "300"
                     , value (toString bpm)
                     , on "change" (Json.map (safeToInt >> SetTempo) targetValue)
+                      -- disable the slider if we're currently playing the tune
+                    , disabled playing
                     ]
                     []
 
