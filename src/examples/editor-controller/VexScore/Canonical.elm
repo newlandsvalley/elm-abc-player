@@ -8,6 +8,7 @@ module VexScore.Canonical exposing (toScoreText)
 
 import VexScore.Score exposing (..)
 import String exposing (concat)
+import Tuple exposing (first, second)
 import Maybe exposing (withDefault)
 import Abc.ParseTree
     exposing
@@ -84,7 +85,7 @@ vexStave mvs =
                 time =
                     case vs.mMeter of
                         Just m ->
-                            "time=" ++ toString (fst m) ++ "/" ++ toString (snd m)
+                            "time=" ++ toString (first m) ++ "/" ++ toString (second m)
 
                         _ ->
                             ""

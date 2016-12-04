@@ -13,6 +13,7 @@ import VexScore.Score exposing (..)
 import Dict exposing (Dict, get)
 import Result exposing (Result)
 import Maybe exposing (withDefault)
+import Tuple exposing (first, second)
 import Ratio exposing (Rational, over, numerator, denominator, multiply)
 import Debug exposing (log)
 
@@ -42,16 +43,16 @@ translate t =
             initialContext t
 
         ksmod =
-            snd ctx.modifiedKeySig
+            second ctx.modifiedKeySig
     in
         let
             result =
-                tuneBody ctx (snd t)
+                tuneBody ctx (second t)
         in
             if (List.isEmpty ksmod) then
                 case result of
                     Ok sc ->
-                        Ok (fst sc)
+                        Ok (first sc)
 
                     Err e ->
                         Err e
@@ -105,7 +106,7 @@ vexLine : Context -> MusicLine -> Result String ( VexBodyPart, Context )
 vexLine ctx line =
     let
         mKey =
-            (fst ctx.modifiedKeySig)
+            (first ctx.modifiedKeySig)
                 |> normaliseMode
                 |> Just
 
@@ -369,10 +370,10 @@ makeBroken : Broken -> AbcNote -> AbcNote -> ( AbcNote, AbcNote )
 makeBroken broken n1 n2 =
     let
         down i =
-            Ratio.add (1 `over` 1) (Ratio.negate (dotFactor i))
+            Ratio.add (over 1 1) (Ratio.negate (dotFactor i))
 
         up i =
-            Ratio.add (1 `over` 1) (dotFactor i)
+            Ratio.add (over 1 1) (dotFactor i)
     in
         case broken of
             LeftArrow i ->
@@ -573,9 +574,9 @@ foldOverResult ctx aline fmus =
                 ( Ok vic, Ok vics ) ->
                     let
                         newvis =
-                            fst vic :: fst vics
+                            first vic :: first vics
                     in
-                        Ok ( newvis, snd vic )
+                        Ok ( newvis, second vic )
 
                 ( _, Err acc ) ->
                     Err acc

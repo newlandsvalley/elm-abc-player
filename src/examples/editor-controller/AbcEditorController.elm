@@ -3,19 +3,29 @@ module AbcEditorController exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (on, targetValue, onClick, onInput)
-import Html.App as Html
 import Task exposing (Task, andThen, succeed, sequence, onError)
 import List exposing (isEmpty)
 import Maybe exposing (Maybe, withDefault)
 import Maybe.Extra exposing (isJust)
 import String exposing (slice)
-import Result exposing (Result, formatError)
+import Result exposing (Result, mapError)
+import Tuple exposing (first)
 import Abc exposing (..)
-import Abc.ParseTree exposing (AbcTune, PitchClass(..), Mode(..), Accidental(..), ModifiedKeySignature, KeySignature)
+import Abc.ParseTree
+    exposing
+        ( AbcTune
+        , PitchClass(..)
+        , Mode(..)
+        , Accidental(..)
+        , ModifiedKeySignature
+        , KeySignature
+        , TempoSignature
+        )
 import Abc.Canonical exposing (fromResult, fromTune)
-import Music.Notation exposing (getKeySig, getTitle)
+import Music.Notation exposing (getKeySig, getTitle, getTempoSig)
 import Music.Transposition exposing (transposeTo)
 import Music.Octave exposing (up, down)
+import Music.Tempo exposing (defaultTempo, getBpm, setBpm)
 import MidiMelody exposing (..)
 import MidiPerformance exposing (midiRecordingFromAbc)
 import MidiTypes exposing (MidiEvent(..), MidiRecording)
@@ -133,6 +143,8 @@ type Msg
       -- get the ABC text from the text area
     | Transpose String
       -- transpose the ABC
+    | SetTempo Int
+      -- alter the tempo of the ABC to the BPM indicated
     | MoveOctave Bool
       -- move the octave (up or down)
     | EstablishRecording (Result ParseError AbcTune)
@@ -172,6 +184,13 @@ update msg model =
             let
                 newModel =
                     transpose s model
+            in
+                displayScoreAndPlayer newModel
+
+        SetTempo bpm ->
+            let
+                newModel =
+                    changeTempo bpm model
             in
                 displayScoreAndPlayer newModel
 
@@ -305,8 +324,7 @@ establishRecording r =
         nullTask =
             Task.succeed (\_ -> ())
     in
-        Task.perform (\_ -> NoOp)
-            (\_ -> PlayerMsg (Midi.Player.SetRecording midiRecording))
+        Task.perform (\_ -> PlayerMsg (Midi.Player.SetRecording midiRecording))
             (nullTask)
 
 
@@ -317,7 +335,7 @@ terminateLine s =
 
 toMidiRecording : Result ParseError AbcTune -> Result String MidiRecording
 toMidiRecording r =
-    formatError (\_ -> "some error or other") r
+    mapError (\_ -> "some error or other") r
         |> Result.map (midiRecordingFromAbc True)
 
 
@@ -377,7 +395,7 @@ transpose kstr model =
                     -- in transposition because our modes always match.  Just convert the notional String error to a notional empty parser error
                     newTRCorrectedErr =
                         newTuneResult
-                            |> formatError (\_ -> dummyError)
+                            |> mapError (\_ -> dummyError)
 
                     -- and collect the new ABC wrapped in a Result
                     newAbcResult =
@@ -393,6 +411,27 @@ transpose kstr model =
 
             _ ->
                 model
+
+
+
+{- change the tempo of the tune in the model -}
+
+
+changeTempo : Int -> Model -> Model
+changeTempo bpm model =
+    case model.tuneResult of
+        Ok tune ->
+            let
+                newTune =
+                    setBpm bpm tune
+
+                newAbc =
+                    fromTune newTune
+            in
+                { model | abc = newAbc, tuneResult = (Ok newTune) }
+
+        _ ->
+            model
 
 
 
@@ -535,7 +574,7 @@ view model =
             , div [ leftPaneStyle ]
                 [ span [ leftPanelLabelStyle ] [ text "Load an ABC file:" ]
                 , input
-                    [ type' "file"
+                    [ type_ "file"
                     , id "fileinput"
                       -- FileIO port requires this exact id to be set
                     , accept ".abc, .txt"
@@ -549,13 +588,21 @@ view model =
                     , button (buttonAttributes True RequestFileDownload)
                         [ text "save" ]
                     ]
-                , span [ leftPanelLabelStyle ] [ text "Transpose to:" ]
-                , transpositionMenu model
-                , span [ leftPanelLabelStyle ] [ text "Move octave:" ]
-                , button (buttonAttributes True (MoveOctave True))
-                    [ text "up" ]
-                , button (buttonAttributes True (MoveOctave False))
-                    [ text "down" ]
+                , span [ leftPanelLabelStyle ]
+                    [ text "Tempo:"
+                    , tempoSlider model
+                    ]
+                , span [ leftPanelLabelStyle ]
+                    [ text "Transpose to:"
+                    , transpositionMenu model
+                    ]
+                , span [ leftPanelLabelStyle ]
+                    [ text "Move octave:"
+                    , button (buttonAttributes True (MoveOctave True))
+                        [ text "up" ]
+                    , button (buttonAttributes True (MoveOctave False))
+                        [ text "down" ]
+                    ]
                 ]
             , div [ rightPaneStyle ]
                 [ fieldset [ fieldsetStyle ]
@@ -616,14 +663,14 @@ transpositionMenu m =
         case mKeySig of
             Just mks ->
                 select
-                    [ leftPanelLabelStyle
+                    [ selectionStyle
                     , on "change" (Json.map Transpose targetValue)
                     ]
                     (transpositionOptions mks)
 
             Nothing ->
                 select
-                    [ leftPanelLabelStyle
+                    [ selectionStyle
                     ]
                     [ option [] [ text "unavailable" ]
                     ]
@@ -641,7 +688,7 @@ transpositionOptions : ModifiedKeySignature -> List (Html Msg)
 transpositionOptions mks =
     let
         ks =
-            fst mks
+            first mks
 
         mode =
             ks.mode
@@ -690,6 +737,50 @@ transpositionOptions mks =
 
             _ ->
                 allModes
+
+
+tempoSlider : Model -> Html Msg
+tempoSlider m =
+    case
+        m.tuneResult
+    of
+        Ok tune ->
+            let
+                bpm =
+                    getBpm tune
+            in
+                input
+                    [ type_ "range"
+                    , sliderStyle
+                    , Html.Attributes.min "10"
+                    , Html.Attributes.max "300"
+                    , value (toString bpm)
+                    , on "change" (Json.map (safeToInt >> SetTempo) targetValue)
+                    ]
+                    []
+
+        _ ->
+            input
+                [ type_ "range"
+                , sliderStyle
+                , Html.Attributes.min "10"
+                , Html.Attributes.max "300"
+                , value "120"
+                , disabled True
+                ]
+                []
+
+
+
+{- a safe cast from string to int which is used only to
+   convert tempo bpm values from their String to Int representations
+-}
+
+
+safeToInt : String -> Int
+safeToInt s =
+    String.toInt s
+        |> Result.withDefault 120
 
 
 
@@ -794,6 +885,21 @@ rightPaneStyle =
         ]
 
 
+sliderStyle : Attribute msg
+sliderStyle =
+    style
+        [ ( "width", "150px" )
+        , ( "margin-left", "40px" )
+        ]
+
+
+menuErrorStyle : Attribute msg
+menuErrorStyle =
+    style
+        [ ( "width", "200px" )
+        ]
+
+
 
 {- gather together all the button attributes
 
@@ -855,6 +961,15 @@ errorHighlightStyle : Attribute msg
 errorHighlightStyle =
     style
         [ ( "color", "red" )
+        ]
+
+
+selectionStyle : Attribute msg
+selectionStyle =
+    style
+        [ ( "margin-left", "40px" )
+        , ( "margin-top", "20px" )
+        , ( "font-size", "1em" )
         ]
 
 

@@ -1,11 +1,12 @@
-module Melody exposing
-  ( NoteEvent (..)
-  , MelodyLine
-  , SingleNote
-  , ABar
-  ) 
+module Melody
+    exposing
+        ( NoteEvent(..)
+        , MelodyLine
+        , SingleNote
+        , ABar
+        )
 
-{-|  Data structures for describing an ABC melody  (i.e just a succession of notes and durations)
+{-| Data structures for describing an ABC melody  (i.e just a succession of notes and durations)
 
 # Definition
 
@@ -19,35 +20,46 @@ import Music.Notation exposing (NoteTime, MidiPitch)
 import Music.Accidentals exposing (Accidentals)
 import RepeatTypes exposing (GeneralisedBar)
 
-{-| an individual Note (no pitch class implies a rest) -}    
-type alias SingleNote = 
-  { time : NoteTime
-  , pitch : MidiPitch
-  , pc : Maybe PitchClass
-  , accidental : Maybe Accidental
-  }
 
-{-| a Note Event (note or chord) -}    
-type NoteEvent =
-     ANote SingleNote Bool    -- Bool indicates whether note is tied
-   | AChord (List SingleNote)
-   
+{-| an individual Note (no pitch class implies a rest)
+-}
+type alias SingleNote =
+    { time : NoteTime
+    , pitch : MidiPitch
+    , pc : Maybe PitchClass
+    , accidental : Maybe Accidental
+    }
+
+
+{-| a Note Event (note or chord)
+-}
+type NoteEvent
+    = ANote SingleNote Bool
+      -- Bool indicates whether note is tied
+    | AChord (List SingleNote)
+
+
+
 {- A Bar -}
+
+
 type alias ABar =
-   GeneralisedBar NoteEvent
+    GeneralisedBar NoteEvent
+
+
 
 {- GeneralisedBar is a parameterised type defined in RepeatTypes.elm
-   which makes ABar (when expanded) look like this:
-type alias ABar =
-  {  number : Int               -- sequential from zero
-  ,  repeat : Maybe Repeat      -- the bar owns a repeat of some kind
-  ,  iteration : Maybe Int      -- the bar has an iteration marker  (|1  or |2 etc)
-  ,  accidentals : Accidentals  -- any notes marked explicitly as accidentals in the bar (updated in sequence)
-  ,  notes : List NoteEvent     -- the notes in the bar
-  }
+      which makes ABar (when expanded) look like this:
+   type alias ABar =
+     {  number : Int               -- sequential from zero
+     ,  repeat : Maybe Repeat      -- the bar owns a repeat of some kind
+     ,  iteration : Maybe Int      -- the bar has an iteration marker  (|1  or |2 etc)
+     ,  accidentals : Accidentals  -- any notes marked explicitly as accidentals in the bar (updated in sequence)
+     ,  notes : List NoteEvent     -- the notes in the bar
+     }
 -}
-
 {- the overall melody -}
-type alias MelodyLine = List ABar
 
 
+type alias MelodyLine =
+    List ABar
