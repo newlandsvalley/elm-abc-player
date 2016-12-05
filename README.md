@@ -72,10 +72,10 @@ Sources of native javascript code
 These projects (particularly the editor controller) integrate a number of modules together which use native javascript by means of ports.  This javascript is maintained in the js directory.  Sources are as follows:
 
 
-| Name | Description | Github Repo | Maintainer email |
-|------|-------------|-------------|------------------|
-|  soundfont-player | play soundfonts using web-audio | https://github.com/danigb/soundfont-player | danigb@gmail.com |   
-|  vextab-div | display scores | https://github.com/0xfe/vextab | http://0xfe.muthanna.com |   
+| Name | Description | Github Repo | Maintainer |
+|------|-------------|-------------|------------|
+|  soundfont-player | Play soundfonts using web-audio | https://github.com/danigb/soundfont-player | danigb@gmail.com |   
+|  vextab-div | Display scores | https://github.com/0xfe/vextab | http://0xfe.muthanna.com |   
 |  nativeFileIO | Port for text file IO | https://github.com/newlandsvalley/elm-file-io | john.watson@gmx.co.uk |   
 |  nativeSoundFont | Port wrapper round soundfont-player | https://github.com/newlandsvalley/elm-soundfont-ports | john.watson@gmx.co.uk |   
 |  nativeVexTab | Port wrapper round vextab-div | https://github.com/newlandsvalley/elm-vextab | john.watson@gmx.co.uk |   

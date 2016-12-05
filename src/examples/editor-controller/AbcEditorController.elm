@@ -494,10 +494,9 @@ viewError m =
         tuneResult =
             m.tuneResult
 
+        -- the range of characters to display around each side of the error position
         textRange =
             10
-
-        -- the range of characters to display around each side of the error position
     in
         case tuneResult of
             Err e ->
@@ -569,74 +568,86 @@ hideScore model =
 view : Model -> Html Msg
 view model =
     if (True) then
-        div []
-            [ h1 [ centreStyle ] [ text "ABC Editor" ]
-            , div [ leftPaneStyle ]
-                [ span [ leftPanelLabelStyle ] [ text "Load an ABC file:" ]
-                , input
-                    [ type_ "file"
-                    , id "fileinput"
-                      -- FileIO port requires this exact id to be set
-                    , accept ".abc, .txt"
-                      --, onClick RequestFileUpload
-                    , on "change" (Json.succeed RequestFileUpload)
-                    , inputStyle
-                    ]
-                    []
-                , span [ leftPanelLabelStyle ]
-                    [ text "Save ABC to file:"
-                    , button (buttonAttributes True RequestFileDownload)
-                        [ text "save" ]
-                    ]
-                , span [ leftPanelLabelStyle ]
-                    [ text "Tempo:"
-                    , tempoSlider model
-                    ]
-                , span [ leftPanelLabelStyle ]
-                    [ text "Transpose to:"
-                    , transpositionMenu model
-                    ]
-                , span [ leftPanelLabelStyle ]
-                    [ text "Move octave:"
-                    , button (buttonAttributes True (MoveOctave True))
-                        [ text "up" ]
-                    , button (buttonAttributes True (MoveOctave False))
-                        [ text "down" ]
-                    ]
-                ]
-            , div [ rightPaneStyle ]
-                [ fieldset [ fieldsetStyle ]
-                    [ textarea
-                        [ placeholder "abc"
-                        , value model.abc
-                        , onInput Abc
-                        , taStyle
-                        , cols 76
-                        , rows 16
-                        , autocomplete False
-                        , spellcheck False
-                        , autofocus True
+        let
+            enableButton =
+                case model.tuneResult of
+                    Ok _ ->
+                        True
+
+                    _ ->
+                        False
+
+            hasTopMargin =
+                True
+        in
+            div []
+                [ h1 [ centreStyle ] [ text "ABC Editor" ]
+                , div [ leftPaneStyle ]
+                    [ span [ leftPanelLabelStyle ] [ text "Load an ABC file:" ]
+                    , input
+                        [ type_ "file"
+                        , id "fileinput"
+                          -- FileIO port requires this exact id to be set
+                        , accept ".abc, .txt"
+                          --, onClick RequestFileUpload
+                        , on "change" (Json.succeed RequestFileUpload)
+                        , inputStyle
                         ]
                         []
-                    ]
-                , div
-                    []
-                    [ Html.map PlayerMsg (Midi.Player.view model.player)
-                    ]
-                , div
-                    []
-                    [ p [] [ viewError model ]
-                    ]
-                , div []
-                    [ canvas
-                        [ id "vextab"
-                          -- , hidden (isParseError model || isJust model.vextab.error),
-                        , hidden (hideScore model)
+                    , span [ leftPanelLabelStyle ]
+                        [ text "Save ABC to file:"
+                        , button (buttonAttributes True False RequestFileDownload)
+                            [ text "save" ]
                         ]
+                    , span [ leftPanelLabelStyle ]
+                        [ text "Tempo:"
+                        , tempoSlider model
+                        ]
+                    , span [ leftPanelLabelStyle ]
+                        [ text "Transpose to:"
+                        , transpositionMenu model
+                        ]
+                    , span [ leftPanelLabelStyle ]
+                        [ text "Move octave:"
+                        , button (buttonAttributes enableButton hasTopMargin (MoveOctave True))
+                            [ text "up" ]
+                        , button (buttonAttributes enableButton hasTopMargin (MoveOctave False))
+                            [ text "down" ]
+                        ]
+                    ]
+                , div [ rightPaneStyle ]
+                    [ fieldset [ fieldsetStyle ]
+                        [ textarea
+                            [ placeholder "abc"
+                            , value model.abc
+                            , onInput Abc
+                            , taStyle
+                            , cols 76
+                            , rows 16
+                            , autocomplete False
+                            , spellcheck False
+                            , autofocus True
+                            ]
+                            []
+                        ]
+                    , div
                         []
+                        [ Html.map PlayerMsg (Midi.Player.view model.player)
+                        ]
+                    , div
+                        []
+                        [ p [] [ viewError model ]
+                        ]
+                    , div []
+                        [ canvas
+                            [ id "vextab"
+                              -- , hidden (isParseError model || isJust model.vextab.error),
+                            , hidden (hideScore model)
+                            ]
+                            []
+                        ]
                     ]
                 ]
-            ]
     else
         div [ centreStyle ]
             [ p [] [ text "It seems as if your browser does not support web-audio.  Perhaps try Chrome." ]
@@ -913,10 +924,10 @@ menuErrorStyle =
 -}
 
 
-buttonAttributes : Bool -> Msg -> List (Attribute Msg)
-buttonAttributes isEnabled msg =
+buttonAttributes : Bool -> Bool -> Msg -> List (Attribute Msg)
+buttonAttributes isEnabled hasTopMargin msg =
     [ class "hoverable"
-    , bStyle isEnabled
+    , bStyle isEnabled hasTopMargin
     , onClick msg
     , disabled (not isEnabled)
     ]
@@ -929,8 +940,8 @@ buttonAttributes isEnabled msg =
 -}
 
 
-bStyle : Bool -> Attribute msg
-bStyle enabled =
+bStyle : Bool -> Bool -> Attribute msg
+bStyle enabled hasTopMargin =
     let
         colour =
             if enabled then
@@ -942,8 +953,14 @@ bStyle enabled =
 
         textSize =
             [ ( "font-size", "1em" ) ]
+
+        marginTop =
+            if hasTopMargin then
+                [ ( "margin-top", "20px" ) ]
+            else
+                []
     in
-        style (colour ++ textSize)
+        style (colour ++ textSize ++ marginTop)
 
 
 
