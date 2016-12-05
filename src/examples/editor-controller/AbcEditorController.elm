@@ -619,7 +619,7 @@ view model =
                     [ fieldset [ fieldsetStyle ]
                         [ textarea
                             [ placeholder "abc"
-                            , value model.abc
+                            , defaultValue model.abc
                             , onInput Abc
                             , taStyle
                             , cols 76
