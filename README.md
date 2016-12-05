@@ -74,8 +74,9 @@ These projects (particularly the editor controller) integrate a number of module
 
 | Name | Description | Github Repo | Maintainer email |
 |------|-------------|-------------|------------------|
-|  nativeFileIO | text file IO | https://github.com/newlandsvalley/elm-file-io | john.watson@gmx.co.uk |   
-|  nativeSoundFont | wrapper round soundfont-player | https://github.com/newlandsvalley/elm-soundfont-ports | john.watson@gmx.co.uk |   
-|  nativeVexTab | wrapper round vextab-div | https://github.com/newlandsvalley/elm-vextab | john.watson@gmx.co.uk |   
 |  soundfont-player | play soundfonts using web-audio | https://github.com/danigb/soundfont-player | danigb@gmail.com |   
 |  vextab-div | display scores | https://github.com/0xfe/vextab | http://0xfe.muthanna.com |   
+|  nativeFileIO | Port for text file IO | https://github.com/newlandsvalley/elm-file-io | john.watson@gmx.co.uk |   
+|  nativeSoundFont | Port wrapper round soundfont-player | https://github.com/newlandsvalley/elm-soundfont-ports | john.watson@gmx.co.uk |   
+|  nativeVexTab | Port wrapper round vextab-div | https://github.com/newlandsvalley/elm-vextab | john.watson@gmx.co.uk |   
+
