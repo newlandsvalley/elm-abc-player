@@ -769,7 +769,10 @@ tempoSlider m =
                     , Html.Attributes.min "10"
                     , Html.Attributes.max "300"
                     , value (toString bpm)
+                      -- chrome, safari
                     , on "change" (Json.map (safeToInt >> SetTempo) targetValue)
+                      -- firefox
+                    , onInput (safeToInt >> SetTempo)
                       -- disable the slider if we're currently playing the tune
                     , disabled playing
                     ]
