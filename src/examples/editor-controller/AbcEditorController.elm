@@ -619,7 +619,8 @@ view model =
                     [ fieldset [ fieldsetStyle ]
                         [ textarea
                             [ placeholder "abc"
-                            , defaultValue model.abc
+                              -- , defaultValue model.abc
+                            , value model.abc
                             , onInput Abc
                             , taStyle
                             , cols 76
@@ -792,7 +793,19 @@ tempoSlider m =
 
 
 {- a safe cast from string to int which is used only to
-   convert tempo bpm values from their String to Int representations
+   convert tempo bpm values from
+            let
+                resOK =
+                    case tr of
+                        Ok _ ->
+                            True
+
+                        _ ->
+                            False
+
+                _ =
+                    log "establish recording" resOK
+            intheir String to Int representations
 -}
 
 

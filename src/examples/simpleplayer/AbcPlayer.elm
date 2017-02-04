@@ -65,7 +65,7 @@ update msg model =
 
         RequestLoadFonts dir ->
             ( model
-            , requestLoadFonts dir
+            , requestLoadPianoFonts dir
             )
 
         LoadFile name ->

@@ -24,7 +24,7 @@ import Debug exposing (..)
 
 main =
     Html.program
-        { init = ( init, requestLoadFonts "assets/soundfonts" ), update = update, view = view, subscriptions = subscriptions }
+        { init = ( init, requestLoadPianoFonts "assets/soundfonts" ), update = update, view = view, subscriptions = subscriptions }
 
 
 

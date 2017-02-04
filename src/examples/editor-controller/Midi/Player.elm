@@ -120,7 +120,7 @@ init track =
         , delay = 0.0
         }
     }
-        ! [ requestLoadFonts "assets/soundfonts" ]
+        ! [ requestLoadPianoFonts "assets/soundfonts" ]
 
 
 
