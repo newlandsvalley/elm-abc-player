@@ -1,6 +1,8 @@
 elm-abc-player
 ==============
 
+![alt tag](https://cdn.rawgit.com/newlandsvalley/elm-abc-player/3fceda93/assets/images/player/ABC-editor.jpg)
+
 These projects explore the possibilities of playing [ABC notation](http://abcnotation.com/) directly in the browser within an Elm (0.18) application.  They use the following Elm audio libraries:
 
 *   Elm-abc-parser.  This is a parser for ABC notation.
